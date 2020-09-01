@@ -1,4 +1,4 @@
-package sqlite
+package database
 
 import (
 	"database/sql"
@@ -9,12 +9,21 @@ import (
 	"sync"
 )
 
-type database struct {
+type sqlite struct {
 	db    *sql.DB
 	mutex sync.Mutex
 }
 
-func (d *database) Prepare(query string) (stmt *sql.Stmt, err error) {
+func (d *sqlite) Begin() (*sql.Tx, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	if d.db == nil {
+		return nil, errors.New("The sqlite is nil. ")
+	}
+	return d.db.Begin()
+}
+
+func (d *sqlite) Prepare(query string) (stmt *sql.Stmt, err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if d.db == nil {
@@ -28,7 +37,7 @@ func (d *database) Prepare(query string) (stmt *sql.Stmt, err error) {
 	return
 }
 
-func (d *database) Exec(query string, args ...interface{}) (result sql.Result, err error) {
+func (d *sqlite) Exec(query string, args ...interface{}) (result sql.Result, err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if d.db == nil {
@@ -41,7 +50,7 @@ func (d *database) Exec(query string, args ...interface{}) (result sql.Result, e
 	}
 	return
 }
-func (d *database) Query(query string, args ...interface{}) (rows *sql.Rows, err error) {
+func (d *sqlite) Query(query string, args ...interface{}) (rows *sql.Rows, err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if d.db == nil {
@@ -55,7 +64,7 @@ func (d *database) Query(query string, args ...interface{}) (rows *sql.Rows, err
 	return
 }
 
-func (d *database) Close() {
+func (d *sqlite) Close() {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	_ = d.db.Close()
@@ -140,7 +149,7 @@ func createColumnSql(field *field) string {
 	return query
 }
 
-func (d *database) createIndex(tableName string, field *field) error {
+func (d *sqlite) createIndex(tableName string, field *field) error {
 	if field.index == "index" || field.index == "unique" {
 		query := "CREATE "
 		if field.index == "unique" {
@@ -156,7 +165,7 @@ func (d *database) createIndex(tableName string, field *field) error {
 	return nil
 }
 
-func (d *database) NewTable(content interface{}) (Table, error) {
+func (d *sqlite) NewTable(content interface{}, tableName string) (Table, error) {
 	v := reflect.ValueOf(content)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -165,7 +174,9 @@ func (d *database) NewTable(content interface{}) (Table, error) {
 		return nil, errors.New("The kind of content is not struct. ")
 	}
 	names := strings.Split(v.Type().Name(), ".")
-	tableName := "t_" + strings.ToLower(names[len(names)-1])
+	if tableName == "" {
+		tableName = "t_" + strings.ToLower(names[len(names)-1])
+	}
 
 	fields := parseStruct(v)
 

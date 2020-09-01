@@ -1,4 +1,4 @@
-package sqlite
+package database
 
 import (
 	"encoding/json"
@@ -17,11 +17,11 @@ type TestResource struct {
 
 func TestDatabase(t *testing.T) {
 	var err error
-	db, err = NewDatabase("test.db")
+	db, err = NewDatabase("sqlite3", "test.db")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tb, err = db.NewTable(TestResource{})
+	tb, err = db.NewTable(TestResource{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

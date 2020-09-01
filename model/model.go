@@ -1,9 +1,9 @@
 package model
 
 import (
+	"github.com/infinit-lab/gravity/database"
 	"github.com/infinit-lab/gravity/event"
 	"github.com/infinit-lab/gravity/printer"
-	"github.com/infinit-lab/gravity/sqlite"
 )
 
 type Id interface {
@@ -12,11 +12,11 @@ type Id interface {
 }
 
 type PrimaryKey struct {
-	sqlite.PrimaryKey
+	database.PrimaryKey
 }
 
 type Resource struct {
-	sqlite.Resource
+	database.Resource
 }
 
 func (p *PrimaryKey) GetId() int {
@@ -42,7 +42,7 @@ const (
 )
 
 type Model interface {
-	Table() sqlite.Table
+	Table() database.Table
 
 	GetList() ([]interface{}, error)
 	Get(id int) (interface{}, error)
@@ -52,8 +52,8 @@ type Model interface {
 	Sync() error
 }
 
-func New(db sqlite.Database, resource Id, topic string, isCache bool) (Model, error) {
-	tb, err := db.NewTable(resource)
+func New(db database.Database, resource Id, topic string, isCache bool, tableName string) (Model, error) {
+	tb, err := db.NewTable(resource, tableName)
 	if err != nil {
 		printer.Error(err)
 		return nil, err
@@ -71,13 +71,13 @@ func New(db sqlite.Database, resource Id, topic string, isCache bool) (Model, er
 }
 
 type model struct {
-	table sqlite.Table
+	table database.Table
 	topic string
 
 	cache Cache
 }
 
-func (m *model) Table() sqlite.Table {
+func (m *model) Table() database.Table {
 	return m.table
 }
 

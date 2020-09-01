@@ -2,9 +2,9 @@ package model
 
 import (
 	"encoding/json"
+	"github.com/infinit-lab/gravity/database"
 	"github.com/infinit-lab/gravity/event"
 	"github.com/infinit-lab/gravity/printer"
-	"github.com/infinit-lab/gravity/sqlite"
 	"sync"
 	"testing"
 	"time"
@@ -38,12 +38,12 @@ func TestNewModel(t *testing.T) {
 		}
 	}()
 
-	db, err := sqlite.NewDatabase("test.db")
+	db, err := database.NewDatabase("sqlite3", "test.db")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m, err := New(db, &TestResource{}, TopicModelTest, true)
+	m, err := New(db, &TestResource{}, TopicModelTest, true, "")
 	if err != nil {
 		t.Fatal(err)
 	}

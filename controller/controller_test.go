@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/infinit-lab/gravity/config"
+	"github.com/infinit-lab/gravity/database"
 	"github.com/infinit-lab/gravity/event"
 	"github.com/infinit-lab/gravity/model"
 	"github.com/infinit-lab/gravity/printer"
 	"github.com/infinit-lab/gravity/server"
-	"github.com/infinit-lab/gravity/sqlite"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -24,8 +24,8 @@ func TestController(t *testing.T) {
 	}
 
 	f := func(c *gin.Context, s *Session) (interface{}, error) {
-		resource := sqlite.Resource{
-			PrimaryKey: sqlite.PrimaryKey{
+		resource := database.Resource{
+			PrimaryKey: database.PrimaryKey{
 				Id: 1,
 			},
 			Name:    "Test",
@@ -121,8 +121,8 @@ func TestControllerSessionMiddle(t *testing.T) {
 	}
 
 	f := func(c *gin.Context, s *Session) (interface{}, error) {
-		resource := sqlite.Resource{
-			PrimaryKey: sqlite.PrimaryKey{
+		resource := database.Resource{
+			PrimaryKey: database.PrimaryKey{
 				Id: 1,
 			},
 			Name:    s.Token,
