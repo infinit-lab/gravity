@@ -173,8 +173,8 @@ func (d *sqlite) NewTable(content interface{}, tableName string) (Table, error) 
 	if v.Kind() != reflect.Struct {
 		return nil, errors.New("The kind of content is not struct. ")
 	}
-	names := strings.Split(v.Type().Name(), ".")
 	if tableName == "" {
+		names := strings.Split(v.Type().Name(), ".")
 		tableName = "t_" + strings.ToLower(names[len(names)-1])
 	}
 

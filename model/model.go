@@ -36,6 +36,7 @@ func (r *Resource) SetId(id int) {
 }
 
 const (
+	TopicSync     string = "sync"
 	StatusCreated string = "created"
 	StatusUpdated string = "updated"
 	StatusDeleted string = "deleted"
@@ -50,6 +51,9 @@ type Model interface {
 	Update(resource Id, context interface{}) error
 	Delete(id int, context interface{}) error
 	Sync() error
+	SyncSingle(id int) error
+	SetBeforeInsertLayer(layer BeforeInsertLayer)
+	SetBeforeEraseLayer(layer BeforeEraseLayer)
 }
 
 func New(db database.Database, resource Id, topic string, isCache bool, tableName string) (Model, error) {
@@ -67,14 +71,27 @@ func New(db database.Database, resource Id, topic string, isCache bool, tableNam
 	} else {
 		model.cache = nil
 	}
+	model.subscriber, _ = event.Subscribe(TopicSync)
+	go func() {
+		for {
+			_, ok := <- model.subscriber.Event()
+			if !ok {
+				return
+			}
+			_ = model.Sync()
+		}
+	}()
+
 	return model, nil
 }
 
 type model struct {
 	table database.Table
 	topic string
-
 	cache Cache
+	subscriber event.Subscriber
+	insertLayer BeforeInsertLayer
+	eraseLayer BeforeEraseLayer
 }
 
 func (m *model) Table() database.Table {
@@ -100,7 +117,7 @@ func (m *model) GetList() ([]interface{}, error) {
 			if !ok {
 				continue
 			}
-			m.cache.Insert(v.GetId(), v)
+			m.cache.Insert(v.GetId(), v, m.insertLayer)
 		}
 	}
 	return values, err
@@ -119,7 +136,7 @@ func (m *model) Get(id int) (interface{}, error) {
 		return nil, err
 	}
 	if m.cache != nil {
-		m.cache.Insert(id, value)
+		m.cache.Insert(id, value, m.insertLayer)
 	}
 	return value, nil
 }
@@ -141,12 +158,14 @@ func (m *model) Create(resource Id, context interface{}) (int, error) {
 		printer.Error(err)
 		return 0, err
 	}
-	e := new(event.Event)
-	e.Topic = m.topic
-	e.Status = StatusCreated
-	e.Data = value
-	e.Context = context
-	_ = event.Publish(e)
+	if len(m.topic) != 0 {
+		e := new(event.Event)
+		e.Topic = m.topic
+		e.Status = StatusCreated
+		e.Data = value
+		e.Context = context
+		_ = event.Publish(e)
+	}
 	return int(id), nil
 }
 
@@ -165,15 +184,17 @@ func (m *model) Update(resource Id, context interface{}) error {
 		return nil
 	}
 	if m.cache != nil {
-		m.cache.Erase(resource.GetId())
+		m.cache.Erase(resource.GetId(), m.eraseLayer)
 	}
 	value, err := m.Get(resource.GetId())
-	e := new(event.Event)
-	e.Topic = m.topic
-	e.Status = StatusUpdated
-	e.Data = value
-	e.Context = context
-	_ = event.Publish(e)
+	if len(m.topic) != 0 {
+		e := new(event.Event)
+		e.Topic = m.topic
+		e.Status = StatusUpdated
+		e.Data = value
+		e.Context = context
+		_ = event.Publish(e)
+	}
 	return nil
 }
 
@@ -189,14 +210,16 @@ func (m *model) Delete(id int, context interface{}) error {
 		return err
 	}
 	if m.cache != nil {
-		m.cache.Erase(id)
+		m.cache.Erase(id, m.eraseLayer)
 	}
-	e := new(event.Event)
-	e.Topic = m.topic
-	e.Status = StatusDeleted
-	e.Data = value
-	e.Context = context
-	_ = event.Publish(e)
+	if len(m.topic) != 0 {
+		e := new(event.Event)
+		e.Topic = m.topic
+		e.Status = StatusDeleted
+		e.Data = value
+		e.Context = context
+		_ = event.Publish(e)
+	}
 	return nil
 }
 
@@ -207,4 +230,23 @@ func (m *model) Sync() error {
 	m.cache.Clear()
 	_, err := m.GetList()
 	return err
+}
+
+func (m *model) SyncSingle(id int) error {
+	if m.cache == nil {
+		return nil
+	}
+	m.cache.Erase(id, m.eraseLayer)
+	_, err := m.Get(id)
+	return err
+}
+
+func (m *model) SetBeforeInsertLayer(layer BeforeInsertLayer) {
+	m.insertLayer = layer
+	_ = m.Sync()
+}
+
+func (m *model) SetBeforeEraseLayer(layer BeforeEraseLayer) {
+	m.eraseLayer = layer
+	_ = m.Sync()
 }

@@ -5,9 +5,12 @@ import (
 	"sync"
 )
 
+type BeforeInsertLayer func(id int, resource interface{})
+type BeforeEraseLayer func(id int, resource interface{})
+
 type Cache interface {
-	Insert(id int, resource interface{})
-	Erase(id int)
+	Insert(id int, resource interface{}, layer BeforeInsertLayer)
+	Erase(id int, layer BeforeEraseLayer)
 	Get(id int) (resource interface{}, ok bool)
 	GetAll() (resources []interface{})
 	Clear()
@@ -24,15 +27,25 @@ type cache struct {
 	mutex sync.Mutex
 }
 
-func (c *cache) Insert(id int, resource interface{}) {
+func (c *cache) Insert(id int, resource interface{}, layer BeforeInsertLayer) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+	if layer != nil {
+		layer(id, resource)
+	}
 	c.cache[id] = resource
 }
 
-func (c *cache) Erase(id int) {
+func (c *cache) Erase(id int, layer BeforeEraseLayer) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+	resource, ok := c.cache[id]
+	if !ok {
+		return
+	}
+	if layer != nil {
+		layer(id, resource)
+	}
 	delete(c.cache, id)
 }
 

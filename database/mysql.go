@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/infinit-lab/gravity/printer"
+	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -73,6 +75,18 @@ func (m *mysql) Close() {
 }
 
 func (m *mysql) NewTable(content interface{}, tableName string) (Table, error) {
+	v := reflect.ValueOf(content)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return nil, errors.New("The kind of content is not struct. ")
+	}
+	if tableName == "" {
+		names := strings.Split(v.Type().Name(), ".")
+		tableName = "t_" + strings.ToLower(names[len(names)-1])
+	}
+
 	table := new(table)
 	table.db = m
 	table.tableName = tableName
