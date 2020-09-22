@@ -7,17 +7,21 @@ import (
 )
 
 type Model interface {
-	GetResource(resourceId int) (*Resource, error)
-	GetUserInfo(userId int) (*UserInfo, error)
-	GetAuthorization(userId int, resourceId int) (*Authorization, error)
+	GetResource(resourceCode, resourceType string) (*Resource, error)
+	GetUser(userCode, userType string) (*User, error)
+	GetAuthorization(userCode, userType, resourceCode, resourceType string) (*Authorization, error)
+	GetAuthorizationList(userCode, userType string) ([]*Authorization, error)
+	GetAuthorizationListByResourceType(userCode, userType, resourceType string) ([]*Authorization, error)
+	GetUserListByResource(resourceCode, resourceType string) ([]*User, error)
 
-	CreateUser(relativeList []int, userType string) (userId int, err error)
-	CreateResource(resourceType string, parentList, relativeList []int, isPublic bool) (resourceId int, err error)
-	CreateAuthorization(userId, resourceId int, operationList []string, isHeritable, isUpdatable, isDeletable bool) error
+	CreateUser(userCode, userType string) (userId int, err error)
+	CreateResource(userCode, userType, resourceCode, resourceType, parentCode, parentType string, isPublic bool) (resourceId int, err error)
+	CreateAuthorization(userCode, userType, resourceCode, resourceType, operations string,
+		isHeritable, isUpdatable, isDeletable bool) error
 
-	DeleteUser(userId int) error
-	DeleteResource(resourceId int) error
-	DeleteAuthorization(userId, resourceId int) error
+	DeleteUser(userCode, userType string) error
+	DeleteResource(resourceCode, resourceType string) error
+	DeleteAuthorization(userCode, userType, resourceCode, resourceType string) error
 }
 
 func New(db database.Database) (Model, error) {
