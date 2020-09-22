@@ -7,15 +7,15 @@ import (
 )
 
 type Authorization struct {
-	m.Id
+	m.PrimaryKey
 	ResourceId  int      `json:"resourceId" db:"resourceId" db_omit:"update" db_default:"0"`
 	UserId      int      `json:"userId" db:"userId" db_omit:"update" db_default:"0"`
-	IsOwner     bool     `json:"isOwner" db:"isOwner" db_type:"TINYINT" db_default:"0"`
-	IsHeritable bool     `json:"isHeritable" db:"isHeritable" db_type:"TINYINT" db_default:"0"`
-	IsUpdatable bool     `json:"isUpdatable" db:"isUpdatable" db_type:"TINYINT" db_default:"0"`
-	IsDeletable bool     `json:"isDeletable" db:"isDeletable" db_type:"TINYINT" db_default:"0"`
+	IsOwner     bool     `json:"isOwner" db:"isOwner" db_omit:"update" db_default:"0"`
+	IsHeritable bool     `json:"isHeritable" db:"isHeritable" db_default:"0"`
+	IsUpdatable bool     `json:"isUpdatable" db:"isUpdatable" db_default:"0"`
+	IsDeletable bool     `json:"isDeletable" db:"isDeletable" db_default:"0"`
 	Operations  string   `json:"operations" db:"operations" db_type:"VARCHAR(4096)" db_default:"''"`
-	Resource    Resource `json:"resource"`
+	Resource    Resource `json:"resource" db_skip:"true"`
 }
 
 type authorizationModel struct {

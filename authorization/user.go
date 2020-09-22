@@ -8,7 +8,7 @@ import (
 )
 
 type User struct {
-	m.Id
+	m.PrimaryKey
 	UserCode string `json:"userCode" db:"userCode" db_omit:"update" db_default:"0"`
 	UserType string `json:"userType" db:"userType" db_omit:"update" db_default:"0"`
 }
@@ -25,7 +25,7 @@ type userModel struct {
 
 const (
 	TopicUser string = "auth_user"
-	userTable string = "t_aut_user"
+	userTable string = "t_auth_user"
 )
 
 func newUserModel(db database.Database) (*userModel, error) {
@@ -147,49 +147,60 @@ func (u *userModel) GetUserListByResource(resourceCode, resourceType string) ([]
 			printer.Error(err)
 			continue
 		}
-		user, ok := value.(*User)
+		user, ok := value.(*UserWithAuthorization)
 		if !ok {
-			printer.Error("Not User. ")
+			printer.Error("Not UserWithAuthorization. ")
 			continue
 		}
-		userList = append(userList, user)
+		userList = append(userList, &user.User)
 	}
 	return userList, nil
 }
 
-func (u *userModel) CreateUser(userCode, userType string) (userId int, err error) {
+func (u *userModel) CreateUser(userCode, userType string) error {
+	_, err := u.GetUser(userCode, userType)
+	if err == nil {
+		return errors.New("Exists. ")
+	}
 	var user User
 	user.UserCode = userCode
 	user.UserType = userType
-	userId, err = u.model.Create(user, nil)
+	_, err = u.model.Create(&user, nil)
 	if err != nil {
 		printer.Error(err)
-		return 0, err
+		return err
 	}
-	return
+	return nil
 }
 
 func (u *userModel) CreateResource(userCode, userType, resourceCode, resourceType, parentCode, parentType string,
-	isPublic bool) (resourceId int, err error) {
+	isPublic bool) error {
 
+	_, err := u.GetResource(resourceCode, resourceType)
+	if err == nil {
+		return errors.New("Exists. ")
+	}
 	user, err := u.GetUser(userCode, userType)
 	if err != nil {
 		printer.Error(err)
-		return 0, err
+		return err
 	}
-	parent, err := u.authorizationModel.resourceModel.getResource(parentCode, parentType)
-	if err != nil {
-		printer.Error(err)
-		return 0, err
-	}
+	var parent *Resource
 	var resource Resource
-	resource.ParentId = parent.GetId()
+	if len(parentCode) != 0 && len(parentType) != 0 {
+		parent, err = u.authorizationModel.resourceModel.getResource(parentCode, parentType)
+		if err != nil {
+			printer.Error(err)
+			return err
+		}
+		resource.ParentId = parent.GetId()
+	}
 	resource.ResourceCode = resourceCode
 	resource.ResourceType = resourceType
-	resourceId, err = u.authorizationModel.resourceModel.model.Create(resource, nil)
+	resourceId, err := u.authorizationModel.resourceModel.model.Create(&resource, nil)
 	if err != nil {
 		printer.Error(err)
-		return 0, err
+		return err
 	}
 
 	var authorization Authorization
@@ -199,14 +210,14 @@ func (u *userModel) CreateResource(userCode, userType, resourceCode, resourceTyp
 	authorization.IsHeritable = true
 	authorization.IsUpdatable = true
 	authorization.IsDeletable = true
-	_, err = u.authorizationModel.model.Create(authorization, nil)
+	_, err = u.authorizationModel.model.Create(&authorization, nil)
 	if err != nil {
 		printer.Error(err)
 		_ = u.DeleteResource(resourceCode, resourceType)
-		return 0, err
+		return err
 	}
 	_ = u.model.SyncSingle(user.GetId())
-	if isPublic {
+	if isPublic && parent != nil {
 		userIdList, err := u.authorizationModel.getUserListByResourceCode(parentCode, parentType)
 		if err != nil {
 			printer.Error(err)
@@ -236,22 +247,26 @@ func (u *userModel) CreateResource(userCode, userType, resourceCode, resourceTyp
 				authorization.IsUpdatable = a.IsUpdatable
 				authorization.IsDeletable = a.IsDeletable
 				authorization.Operations = a.Operations
-				_, err = u.authorizationModel.model.Create(authorization, nil)
+				_, err = u.authorizationModel.model.Create(&authorization, nil)
 				if err != nil {
 					printer.Error(err)
 					_ = u.DeleteResource(resourceCode, resourceType)
-					return 0, err
+					return err
 				}
 			}
 			_ = u.model.SyncSingle(userId)
 		}
 	}
-	return resourceId, nil
+	return nil
 }
 
 func (u *userModel) CreateAuthorization(userCode, userType, resourceCode, resourceType, operations string,
 	isHeritable, isUpdatable, isDeletable bool) error {
 
+	_, err := u.GetAuthorization(userCode, userType, resourceCode, resourceType)
+	if err == nil {
+		return errors.New("Exists. ")
+	}
 	user, err := u.GetUser(userCode, userType)
 	if err != nil {
 		printer.Error(err)
@@ -270,7 +285,7 @@ func (u *userModel) CreateAuthorization(userCode, userType, resourceCode, resour
 	authorization.IsUpdatable = isUpdatable
 	authorization.IsDeletable = isDeletable
 	authorization.Operations = operations
-	_, err = u.authorizationModel.model.Create(authorization, nil)
+	_, err = u.authorizationModel.model.Create(&authorization, nil)
 	if err != nil {
 		printer.Error(err)
 		return err

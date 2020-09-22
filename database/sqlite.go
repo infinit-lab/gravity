@@ -97,6 +97,9 @@ func parseStruct(value reflect.Value) (fields []*field) {
 	for i := 0; i < value.NumField(); i++ {
 		switch value.Field(i).Kind() {
 		case reflect.Struct:
+			if value.Type().Field(i).Tag.Get("db_skip") == "true" {
+				continue
+			}
 			fields = append(fields, parseStruct(value.Field(i))...)
 		case reflect.Ptr, reflect.Array, reflect.Chan, reflect.Func, reflect.Map, reflect.UnsafePointer, reflect.Slice, reflect.Invalid:
 			continue

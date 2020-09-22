@@ -12,8 +12,9 @@ type Model interface {
 	GetAuthorizationListByResourceType(userCode, userType, resourceType string) ([]*Authorization, error)
 	GetUserListByResource(resourceCode, resourceType string) ([]*User, error)
 
-	CreateUser(userCode, userType string) (userId int, err error)
-	CreateResource(userCode, userType, resourceCode, resourceType, parentCode, parentType string, isPublic bool) (resourceId int, err error)
+	CreateUser(userCode, userType string) error
+	CreateResource(userCode, userType, resourceCode, resourceType, parentCode, parentType string,
+		isPublic bool) error
 	CreateAuthorization(userCode, userType, resourceCode, resourceType, operations string,
 		isHeritable, isUpdatable, isDeletable bool) error
 

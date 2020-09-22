@@ -8,7 +8,7 @@ import (
 )
 
 type Resource struct {
-	m.Id
+	m.PrimaryKey
 	ResourceCode string `json:"resourceCode" db:"resourceCode" db_omit:"update" db_type:"VARCHAR(64)" db_default:"''"`
 	ResourceType string `json:"resourceType" db:"resourceType" db_omit:"update" db_type:"VARCHAR(64)" db_default:"''"`
 	ParentId     int    `json:"parentId" db:"parentId" db_omit:"update" db_default:"0"`
