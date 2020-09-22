@@ -19,7 +19,7 @@ type UserWithAuthorization struct {
 }
 
 type userModel struct {
-	model m.Model
+	model              m.Model
 	authorizationModel *authorizationModel
 }
 
@@ -57,11 +57,11 @@ func newUserModel(db database.Database) (*userModel, error) {
 	return u, nil
 }
 
-func (u *userModel)GetResource(resourceCode, resourceType string) (*Resource, error) {
+func (u *userModel) GetResource(resourceCode, resourceType string) (*Resource, error) {
 	return u.authorizationModel.resourceModel.getResource(resourceCode, resourceType)
 }
 
-func (u *userModel)GetUserWithAuthorization(userCode, userType string) (*UserWithAuthorization, error) {
+func (u *userModel) GetUserWithAuthorization(userCode, userType string) (*UserWithAuthorization, error) {
 	values, err := u.model.GetList()
 	if err != nil {
 		printer.Error(err)
@@ -79,7 +79,7 @@ func (u *userModel)GetUserWithAuthorization(userCode, userType string) (*UserWit
 	return nil, errors.New("Not Found. ")
 }
 
-func (u *userModel)GetUser(userCode, userType string) (*User, error) {
+func (u *userModel) GetUser(userCode, userType string) (*User, error) {
 	user, err := u.GetUserWithAuthorization(userCode, userType)
 	if err != nil {
 		printer.Error(err)
@@ -88,7 +88,7 @@ func (u *userModel)GetUser(userCode, userType string) (*User, error) {
 	return &user.User, nil
 }
 
-func (u *userModel)GetAuthorization(userCode, userType, resourceCode, resourceType string) (*Authorization, error) {
+func (u *userModel) GetAuthorization(userCode, userType, resourceCode, resourceType string) (*Authorization, error) {
 	user, err := u.GetUserWithAuthorization(userCode, userType)
 	if err != nil {
 		printer.Error(err)
@@ -106,7 +106,7 @@ func (u *userModel)GetAuthorization(userCode, userType, resourceCode, resourceTy
 	return a, nil
 }
 
-func (u *userModel)GetAuthorizationList(userCode, userType string) ([]*Authorization, error) {
+func (u *userModel) GetAuthorizationList(userCode, userType string) ([]*Authorization, error) {
 	user, err := u.GetUserWithAuthorization(userCode, userType)
 	if err != nil {
 		printer.Error(err)
@@ -119,7 +119,7 @@ func (u *userModel)GetAuthorizationList(userCode, userType string) ([]*Authoriza
 	return authList, nil
 }
 
-func (u *userModel)GetAuthorizationListByResourceType(userCode, userType, resourceType string) ([]*Authorization, error) {
+func (u *userModel) GetAuthorizationListByResourceType(userCode, userType, resourceType string) ([]*Authorization, error) {
 	user, err := u.GetUserWithAuthorization(userCode, userType)
 	if err != nil {
 		printer.Error(err)
@@ -134,7 +134,7 @@ func (u *userModel)GetAuthorizationListByResourceType(userCode, userType, resour
 	return authList, nil
 }
 
-func (u *userModel)GetUserListByResource(resourceCode, resourceType string) ([]*User, error) {
+func (u *userModel) GetUserListByResource(resourceCode, resourceType string) ([]*User, error) {
 	userIdList, err := u.authorizationModel.getUserListByResourceCode(resourceCode, resourceType)
 	if err != nil {
 		printer.Error(err)
@@ -157,7 +157,7 @@ func (u *userModel)GetUserListByResource(resourceCode, resourceType string) ([]*
 	return userList, nil
 }
 
-func (u *userModel)CreateUser(userCode, userType string) (userId int, err error) {
+func (u *userModel) CreateUser(userCode, userType string) (userId int, err error) {
 	var user User
 	user.UserCode = userCode
 	user.UserType = userType
@@ -169,7 +169,9 @@ func (u *userModel)CreateUser(userCode, userType string) (userId int, err error)
 	return
 }
 
-func (u *userModel)CreateResource(userCode, userType, resourceCode, resourceType, parentCode, parentType string, isPublic bool) (resourceId int, err error) {
+func (u *userModel) CreateResource(userCode, userType, resourceCode, resourceType, parentCode, parentType string,
+	isPublic bool) (resourceId int, err error) {
+
 	user, err := u.GetUser(userCode, userType)
 	if err != nil {
 		printer.Error(err)
@@ -247,7 +249,7 @@ func (u *userModel)CreateResource(userCode, userType, resourceCode, resourceType
 	return resourceId, nil
 }
 
-func (u *userModel)CreateAuthorization(userCode, userType, resourceCode, resourceType, operations string,
+func (u *userModel) CreateAuthorization(userCode, userType, resourceCode, resourceType, operations string,
 	isHeritable, isUpdatable, isDeletable bool) error {
 
 	user, err := u.GetUser(userCode, userType)
@@ -277,7 +279,7 @@ func (u *userModel)CreateAuthorization(userCode, userType, resourceCode, resourc
 	return nil
 }
 
-func (u *userModel)DeleteUser(userCode, userType string) error {
+func (u *userModel) DeleteUser(userCode, userType string) error {
 	user, err := u.GetUserWithAuthorization(userCode, userType)
 	if err != nil {
 		printer.Error(err)
@@ -298,7 +300,7 @@ func (u *userModel)DeleteUser(userCode, userType string) error {
 	return nil
 }
 
-func (u *userModel)DeleteResource(resourceCode, resourceType string) error {
+func (u *userModel) DeleteResource(resourceCode, resourceType string) error {
 	resource, err := u.GetResource(resourceCode, resourceType)
 	if err != nil {
 		printer.Error(err)
@@ -340,7 +342,7 @@ func (u *userModel)DeleteResource(resourceCode, resourceType string) error {
 	return nil
 }
 
-func (u *userModel)DeleteAuthorization(userCode, userType, resourceCode, resourceType string) error {
+func (u *userModel) DeleteAuthorization(userCode, userType, resourceCode, resourceType string) error {
 	user, err := u.GetUser(userCode, userType)
 	if err != nil {
 		printer.Error(err)

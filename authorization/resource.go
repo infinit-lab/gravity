@@ -11,7 +11,7 @@ type Resource struct {
 	m.Id
 	ResourceCode string `json:"resourceCode" db:"resourceCode" db_omit:"update" db_type:"VARCHAR(64)" db_default:"''"`
 	ResourceType string `json:"resourceType" db:"resourceType" db_omit:"update" db_type:"VARCHAR(64)" db_default:"''"`
-	ParentId int `json:"parentId" db:"parentId" db_omit:"update" db_default:"0"`
+	ParentId     int    `json:"parentId" db:"parentId" db_omit:"update" db_default:"0"`
 }
 
 type resourceModel struct {
@@ -33,7 +33,7 @@ func newResourceModel(db database.Database) (*resourceModel, error) {
 	return r, err
 }
 
-func (r *resourceModel)getResource(resourceCode string, resourceType string) (*Resource, error) {
+func (r *resourceModel) getResource(resourceCode string, resourceType string) (*Resource, error) {
 	values, err := r.model.GetList()
 	if err != nil {
 		printer.Error(err)
@@ -52,7 +52,7 @@ func (r *resourceModel)getResource(resourceCode string, resourceType string) (*R
 	return nil, errors.New("Not Found. ")
 }
 
-func (r *resourceModel)getResourceListByResourceType(resourceType string) ([]*Resource, error) {
+func (r *resourceModel) getResourceListByResourceType(resourceType string) ([]*Resource, error) {
 	var resourceList []*Resource
 	values, err := r.model.GetList()
 	if err != nil {

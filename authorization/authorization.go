@@ -8,18 +8,18 @@ import (
 
 type Authorization struct {
 	m.Id
-	ResourceId   int                   `json:"resourceId" db:"resourceId" db_omit:"update" db_default:"0"`
-	UserId       int                   `json:"userId" db:"userId" db_omit:"update" db_default:"0"`
-	IsOwner      bool                  `json:"isOwner" db:"isOwner" db_type:"TINYINT" db_default:"0"`
-	IsHeritable  bool                  `json:"isHeritable" db:"isHeritable" db_type:"TINYINT" db_default:"0"`
-	IsUpdatable  bool                  `json:"isUpdatable" db:"isUpdatable" db_type:"TINYINT" db_default:"0"`
-	IsDeletable  bool                  `json:"isDeletable" db:"isDeletable" db_type:"TINYINT" db_default:"0"`
-	Operations string `json:"operations" db:"operations" db_type:"VARCHAR(4096)" db_default:"''"`
+	ResourceId  int      `json:"resourceId" db:"resourceId" db_omit:"update" db_default:"0"`
+	UserId      int      `json:"userId" db:"userId" db_omit:"update" db_default:"0"`
+	IsOwner     bool     `json:"isOwner" db:"isOwner" db_type:"TINYINT" db_default:"0"`
+	IsHeritable bool     `json:"isHeritable" db:"isHeritable" db_type:"TINYINT" db_default:"0"`
+	IsUpdatable bool     `json:"isUpdatable" db:"isUpdatable" db_type:"TINYINT" db_default:"0"`
+	IsDeletable bool     `json:"isDeletable" db:"isDeletable" db_type:"TINYINT" db_default:"0"`
+	Operations  string   `json:"operations" db:"operations" db_type:"VARCHAR(4096)" db_default:"''"`
 	Resource    Resource `json:"resource"`
 }
 
 type authorizationModel struct {
-	model m.Model
+	model         m.Model
 	resourceModel *resourceModel
 }
 
@@ -59,7 +59,7 @@ func newAuthorizationModel(db database.Database) (*authorizationModel, error) {
 	return a, nil
 }
 
-func (a *authorizationModel)getAuthorizationListByUserId(userId int) ([]*Authorization, error) {
+func (a *authorizationModel) getAuthorizationListByUserId(userId int) ([]*Authorization, error) {
 	var authorizationList []*Authorization
 	values, err := a.model.GetList()
 	if err != nil {
@@ -79,7 +79,7 @@ func (a *authorizationModel)getAuthorizationListByUserId(userId int) ([]*Authori
 	return authorizationList, nil
 }
 
-func (a *authorizationModel)getUserListByResourceCode(resourceCode string, resourceType string) ([]int, error) {
+func (a *authorizationModel) getUserListByResourceCode(resourceCode string, resourceType string) ([]int, error) {
 	resource, err := a.resourceModel.getResource(resourceCode, resourceType)
 	if err != nil {
 		printer.Error(err)
