@@ -15,7 +15,7 @@ const DefaultAge int = 600
 
 type Session struct {
 	Token     string      `json:"token"`
-	UserId    int         `json:"userId"`
+	UserId    string      `json:"userId"`
 	Username  string      `json:"username"`
 	Ip        string      `json:"ip"`
 	Context   interface{} `json:"context,omitempty"`
@@ -30,7 +30,7 @@ const (
 	TopicSession string = "session"
 )
 
-func CreateSession(userId int, username string, ip string, context interface{}) (*Session, error) {
+func CreateSession(userId string, username string, ip string, context interface{}) (*Session, error) {
 	session := new(Session)
 	session.Token = strings.ReplaceAll(uuid.NewV4().String(), "-", "")
 	session.UserId = userId

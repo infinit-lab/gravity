@@ -101,7 +101,7 @@ func TestSession(t *testing.T) {
 
 	os.Args = append(os.Args, "session.age=2")
 	config.LoadArgs()
-	session, err := CreateSession(1, "tester", "127.0.0.1", nil)
+	session, err := CreateSession("1", "tester", "127.0.0.1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestControllerSessionMiddle(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 	printer.Trace(string(body))
-	session, err := CreateSession(1, "tester", "127.0.0.1", nil)
+	session, err := CreateSession("1", "tester", "127.0.0.1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
