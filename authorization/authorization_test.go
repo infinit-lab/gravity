@@ -31,7 +31,7 @@ func TestNew(t *testing.T) {
 func TestUserModel_CreateUser(t *testing.T) {
 	userCode = "123"
 	userType = "role"
-	err := mdl.CreateUser(userCode, userType)
+	err := mdl.CreateUser(userCode, userType, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestUserModel_GetUser(t *testing.T) {
 func TestUserModel_CreateUser2(t *testing.T) {
 	childUserCode = "111"
 	childUserType = "role"
-	err := mdl.CreateUser(childUserCode, childUserType)
+	err := mdl.CreateUser(childUserCode, childUserType, userCode, userType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestUserModel_GetUser2(t *testing.T) {
 func TestUserModel_CreateResource(t *testing.T) {
 	resourceCode = "456"
 	resourceType = "device"
-	err := mdl.CreateResource(userCode, userType, resourceCode, resourceType, "", "", false)
+	err := mdl.CreateResource(userCode, userType, resourceCode, resourceType, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestUserModel_GetResource(t *testing.T) {
 func TestUserModel_CreateResource2(t *testing.T) {
 	childResourceCode = "789"
 	childResourceType = "channel"
-	err := mdl.CreateResource(childUserCode, childUserType, childResourceCode, childResourceType, resourceCode, resourceType, true)
+	err := mdl.CreateResource(childUserCode, childUserType, childResourceCode, childResourceType, resourceCode, resourceType)
 	if err != nil {
 		t.Fatal(err)
 	}

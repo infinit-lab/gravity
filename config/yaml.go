@@ -50,6 +50,9 @@ func (r *yamlReader) printData(data map[interface{}]interface{}, depth int) {
 		tab += " "
 	}
 	for key, value := range data {
+		if value == nil {
+			continue
+		}
 		if reflect.TypeOf(value).String() == "map[interface {}]interface {}" {
 			printer.Tracef(tab+"%v:", key)
 			r.printData(value.(map[interface{}]interface{}), depth+1)
