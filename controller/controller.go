@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/infinit-lab/gravity/printer"
 	"github.com/infinit-lab/gravity/server"
@@ -8,9 +9,9 @@ import (
 )
 
 type Response struct {
-	Result  bool        `json:"result"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Result bool        `json:"result"`
+	Error  string      `json:"error"`
+	Data   interface{} `json:"data,omitempty"`
 }
 
 type HandlerFunc func(context *gin.Context, session *Session) (interface{}, error)
@@ -110,11 +111,11 @@ func response(context *gin.Context, data interface{}, err error) {
 	var response Response
 	if err == nil {
 		response.Result = true
-		response.Message = ""
+		response.Error = ""
 		status = http.StatusOK
 	} else {
 		response.Result = false
-		response.Message = err.Error()
+		response.Error = err.Error()
 		status = http.StatusInternalServerError
 	}
 	response.Data = data
@@ -140,4 +141,13 @@ func sessionMiddleFunc(middle []gin.HandlerFunc) []gin.HandlerFunc {
 	temp = append(temp, SessionMiddle())
 	temp = append(temp, middle...)
 	return temp
+}
+
+func GetRequestBody(c *gin.Context, body interface{}) error {
+	data, err := c.GetRawData()
+	if err != nil {
+		printer.Error(err)
+		return err
+	}
+	return json.Unmarshal(data, body)
 }

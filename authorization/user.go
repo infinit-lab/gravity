@@ -5,6 +5,7 @@ import (
 	"github.com/infinit-lab/gravity/database"
 	m "github.com/infinit-lab/gravity/model"
 	"github.com/infinit-lab/gravity/printer"
+	"sort"
 )
 
 type User struct {
@@ -113,9 +114,14 @@ func (u *userModel) GetAuthorizationList(userCode, userType string) ([]*Authoriz
 		printer.Error(err)
 		return nil, err
 	}
+	var keyList []int
+	for key, _ := range user.AuthorizationMap {
+		keyList = append(keyList, key)
+	}
+	sort.Ints(keyList)
 	var authList []*Authorization
-	for _, a := range user.AuthorizationMap {
-		authList = append(authList, a)
+	for _, key := range keyList {
+		authList = append(authList, user.AuthorizationMap[key])
 	}
 	return authList, nil
 }
@@ -126,11 +132,16 @@ func (u *userModel) GetAuthorizationListByResourceType(userCode, userType, resou
 		printer.Error(err)
 		return nil, err
 	}
-	var authList []*Authorization
-	for _, a := range user.AuthorizationMap {
+	var keyList []int
+	for key, a := range user.AuthorizationMap {
 		if a.Resource.ResourceType == resourceType {
-			authList = append(authList, a)
+			keyList = append(keyList, key)
 		}
+	}
+	sort.Ints(keyList)
+	var authList []*Authorization
+	for _, key := range keyList {
+		authList = append(authList, user.AuthorizationMap[key])
 	}
 	return authList, nil
 }
