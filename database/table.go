@@ -6,6 +6,7 @@ import (
 	"github.com/infinit-lab/gravity/printer"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type table struct {
@@ -67,7 +68,12 @@ func (t *table) GetList(whereSql string, args ...interface{}) (values []interfac
 				str := *(f.pointer.(*string))
 				str = strings.ReplaceAll(str, "T", " ")
 				str = strings.ReplaceAll(str, "Z", "")
-				*(f.pointer.(*string)) = str
+				t, err := time.ParseInLocation("2006-01-02 15:04:05", str, time.UTC)
+				if err != nil {
+					printer.Error(err)
+					continue
+				}
+				*(f.pointer.(*string)) = t.Local().Format("2006-01-02 15:04:05")
 			}
 		}
 		values = append(values, value)

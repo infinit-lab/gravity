@@ -87,6 +87,20 @@ func DeleteSession(token string) {
 	_ = event.Publish(e)
 }
 
+func DeleteSessionByUserId(userId string) {
+	var tokenList []string
+	sessionMutex.Lock()
+	for key, value := range sessionMap {
+		if value.UserId == userId {
+			tokenList = append(tokenList, key)
+		}
+	}
+	sessionMutex.Unlock()
+	for _, token := range tokenList {
+		DeleteSession(token)
+	}
+}
+
 func UpdateSession(token string) {
 	sessionMutex.Lock()
 	session, ok := sessionMap[token]
