@@ -38,7 +38,11 @@ func SubscribeAll() (Subscriber, error) {
 
 func Publish(event *Event) error {
 	if event == nil {
-		return errors.New("The event is nil.")
+		return errors.New("The event is nil. ")
+	}
+
+	if len(event.Topic) == 0 {
+		return errors.New("Topic is empty. ")
 	}
 
 	subscriberMutex.Lock()
