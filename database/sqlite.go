@@ -140,7 +140,7 @@ func parseStruct(value reflect.Value) (fields []*field) {
 }
 
 func createColumnSql(field *field) string {
-	query := field.name + " " + field.t + " "
+	query := "`" + field.name + "` " + field.t + " "
 	if field.index == "primary" {
 		query += "PRIMARY KEY AUTOINCREMENT"
 	} else {

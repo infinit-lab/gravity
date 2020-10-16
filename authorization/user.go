@@ -197,10 +197,13 @@ func (u *userModel) CreateResource(userCode, userType, resourceCode, resourceTyp
 	if err == nil {
 		return errors.New("Exists. ")
 	}
-	user, err := u.GetUser(userCode, userType)
-	if err != nil {
-		printer.Error(err)
-		return err
+	var user *User
+	if len(userCode) != 0 || len(userType) != 0 {
+		user, err = u.GetUser(userCode, userType)
+		if err != nil {
+			printer.Error(err)
+			return err
+		}
 	}
 	var parent *Resource
 	var resource Resource
@@ -220,18 +223,20 @@ func (u *userModel) CreateResource(userCode, userType, resourceCode, resourceTyp
 		return err
 	}
 
-	var authorization Authorization
-	authorization.UserId = user.GetId()
-	authorization.ResourceId = resourceId
-	authorization.IsOwner = true
-	authorization.IsHeritable = true
-	authorization.IsUpdatable = true
-	authorization.IsDeletable = true
-	err = u.createAuthorization(authorization)
-	if err != nil {
-		printer.Error(err)
-		_ = u.DeleteResource(resourceCode, resourceType)
-		return err
+	if user != nil {
+		var authorization Authorization
+		authorization.UserId = user.GetId()
+		authorization.ResourceId = resourceId
+		authorization.IsOwner = true
+		authorization.IsHeritable = true
+		authorization.IsUpdatable = true
+		authorization.IsDeletable = true
+		err = u.createAuthorization(authorization)
+		if err != nil {
+			printer.Error(err)
+			_ = u.DeleteResource(resourceCode, resourceType)
+			return err
+		}
 	}
 
 	if parent != nil {
