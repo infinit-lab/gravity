@@ -52,7 +52,7 @@ type Model interface {
 	Update(resource Id, context interface{}) error
 	Delete(id int, context interface{}) error
 	Sync() error
-	SyncSingle(id int) error
+	SyncSingle(id int) (interface{}, error)
 	SetBeforeInsertLayer(layer BeforeInsertLayer)
 	SetBeforeEraseLayer(layer BeforeEraseLayer)
 }

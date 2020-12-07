@@ -276,7 +276,7 @@ func (u *userModel) CreateResource(userCode, userType, resourceCode, resourceTyp
 					return err
 				}
 			}
-			_ = u.model.SyncSingle(userId)
+			_, _ = u.model.SyncSingle(userId)
 		}
 	}
 	return nil
@@ -302,7 +302,7 @@ func (u *userModel) createAuthorization(authorization Authorization) error {
 		printer.Error(err)
 		return err
 	}
-	_ = u.model.SyncSingle(user.GetId())
+	_, _ = u.model.SyncSingle(user.GetId())
 	if user.ParentId != 0 {
 		authorization.UserId = user.ParentId
 		err := u.createAuthorization(authorization)
@@ -396,7 +396,7 @@ func (u *userModel) DeleteResource(resourceCode, resourceType string) error {
 			printer.Error(err)
 			continue
 		}
-		_ = u.model.SyncSingle(userId)
+		_, _ = u.model.SyncSingle(userId)
 	}
 	err = u.authorizationModel.resourceModel.model.Delete(resource.GetId(), nil)
 	if err != nil {
@@ -422,6 +422,6 @@ func (u *userModel) DeleteAuthorization(userCode, userType, resourceCode, resour
 		printer.Error(err)
 		return err
 	}
-	_ = u.model.SyncSingle(user.GetId())
+	_, _ = u.model.SyncSingle(user.GetId())
 	return nil
 }
