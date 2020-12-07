@@ -15,7 +15,7 @@ type mysql struct {
 	isRunning bool
 }
 
-func (m *mysql) Begin() (*sql.Tx, error) {
+func (m *mysql) Begin() (Tx, error) {
 	m.mutex.Lock()
 	db := m.db
 	m.mutex.Unlock()

@@ -22,8 +22,14 @@ type Resource struct {
 	UpdateTime string `json:"updateTime" db:"updateTime" db_omit:"create" db_type:"DATETIME" db_default:"CURRENT_TIMESTAMP"`
 }
 
+type Tx interface {
+	Commit() error
+	Rollback() error
+	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
 type Database interface {
-	Begin() (*sql.Tx, error)
+	Begin() (Tx, error)
 	Prepare(query string) (stmt *sql.Stmt, err error)
 	Exec(query string, args ...interface{}) (result sql.Result, err error)
 	Query(query string, args ...interface{}) (rows *sql.Rows, err error)

@@ -14,13 +14,44 @@ type sqlite struct {
 	mutex sync.Mutex
 }
 
-func (d *sqlite) Begin() (*sql.Tx, error) {
+type sqliteTx struct {
+	tx *sql.Tx
+	db *sqlite
+}
+
+func (tx *sqliteTx) Commit() error {
+	defer tx.db.mutex.Unlock()
+	return tx.tx.Commit()
+}
+
+func (tx *sqliteTx) Rollback() error {
+	defer tx.db.mutex.Unlock()
+	return tx.tx.Rollback()
+}
+
+func (tx *sqliteTx) Exec(query string, args ...interface{}) (sql.Result, error) {
+	result, err := tx.tx.Exec(query, args...)
+	if err != nil {
+		printer.Error(err)
+		printer.Error(query, args)
+	}
+	return result, err
+}
+
+func (d *sqlite) Begin() (Tx, error) {
 	d.mutex.Lock()
-	defer d.mutex.Unlock()
 	if d.db == nil {
 		return nil, errors.New("The sqlite is nil. ")
 	}
-	return d.db.Begin()
+	tx := new(sqliteTx)
+	var err error
+	tx.tx, err = d.db.Begin()
+	if err != nil {
+		printer.Error(err)
+		return nil, err
+	}
+	tx.db = d
+	return tx, nil
 }
 
 func (d *sqlite) Prepare(query string) (stmt *sql.Stmt, err error) {
