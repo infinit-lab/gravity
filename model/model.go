@@ -4,6 +4,7 @@ import (
 	"github.com/infinit-lab/gravity/database"
 	"github.com/infinit-lab/gravity/event"
 	"github.com/infinit-lab/gravity/printer"
+	"sync"
 )
 
 type Id interface {
@@ -89,6 +90,7 @@ type model struct {
 	table database.Table
 	topic string
 	cache Cache
+	mutex sync.RWMutex
 	subscriber event.Subscriber
 	insertLayer BeforeInsertLayer
 	eraseLayer BeforeEraseLayer
@@ -98,7 +100,7 @@ func (m *model) Table() database.Table {
 	return m.table
 }
 
-func (m *model) GetList() ([]interface{}, error) {
+func (m *model) getList() ([]interface{}, error) {
 	if m.cache != nil {
 		values := m.cache.GetAll()
 		if len(values) != 0 {
@@ -123,7 +125,13 @@ func (m *model) GetList() ([]interface{}, error) {
 	return values, err
 }
 
-func (m *model) Get(id int) (interface{}, error) {
+func (m *model) GetList() ([]interface{}, error) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.getList()
+}
+
+func (m *model) get(id int) (interface{}, error) {
 	if m.cache != nil {
 		value, ok := m.cache.Get(id)
 		if ok {
@@ -139,6 +147,12 @@ func (m *model) Get(id int) (interface{}, error) {
 		m.cache.Insert(id, value, m.insertLayer)
 	}
 	return value, nil
+}
+
+func (m *model) Get(id int) (interface{}, error) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.get(id)
 }
 
 func (m *model) Create(resource Id, context interface{}) (int, error) {
@@ -183,10 +197,7 @@ func (m *model) Update(resource Id, context interface{}) error {
 	if rows == 0 {
 		return nil
 	}
-	if m.cache != nil {
-		m.cache.Erase(resource.GetId(), m.eraseLayer)
-	}
-	value, err := m.Get(resource.GetId())
+	value, err := m.SyncSingle(resource.GetId())
 	if len(m.topic) != 0 {
 		e := new(event.Event)
 		e.Topic = m.topic
@@ -227,18 +238,21 @@ func (m *model) Sync() error {
 	if m.cache == nil {
 		return nil
 	}
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	m.cache.Clear()
-	_, err := m.GetList()
+	_, err := m.getList()
 	return err
 }
 
-func (m *model) SyncSingle(id int) error {
+func (m *model) SyncSingle(id int) (interface{}, error) {
 	if m.cache == nil {
-		return nil
+		return m.Get(id)
 	}
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	m.cache.Erase(id, m.eraseLayer)
-	_, err := m.Get(id)
-	return err
+	return m.get(id)
 }
 
 func (m *model) SetBeforeInsertLayer(layer BeforeInsertLayer) {
