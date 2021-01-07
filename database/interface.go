@@ -17,7 +17,7 @@ type Resource struct {
 	PrimaryKey
 	Name       string `json:"name" db:"name" db_type:"VARCHAR(256)" db_default:"''"`
 	Creator    string `json:"creator" db:"creator" db_omit:"update" db_type:"VARCHAR(256)" db_default:"''"`
-	Updater    string `json:"updater" db:"updater" db_omit:"create" db_type:"VARCHAR(256)" db_default:"''"`
+	Updater    string `json:"updater" db:"updater" db_type:"VARCHAR(256)" db_default:"''"`
 	CreateTime string `json:"createTime" db:"createTime" db_omit:"create,update" db_type:"DATETIME" db_default:"CURRENT_TIMESTAMP"`
 	UpdateTime string `json:"updateTime" db:"updateTime" db_omit:"create" db_type:"DATETIME" db_default:"CURRENT_TIMESTAMP"`
 }

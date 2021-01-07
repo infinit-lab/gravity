@@ -53,8 +53,9 @@ type Model interface {
 	Delete(id int, context interface{}) error
 	Sync() error
 	SyncSingle(id int) (interface{}, error)
-	SetBeforeInsertLayer(layer BeforeInsertLayer)
-	SetBeforeEraseLayer(layer BeforeEraseLayer)
+	SetBeforeInsertLayer(layer func(id int, resource interface{}))
+	SetBeforeEraseLayer(layer func(id int, resource interface{}))
+	SetBeforeNotifyLayer(layer func(id int, e *event.Event))
 }
 
 func New(db database.Database, resource Id, topic string, isCache bool, tableName string) (Model, error) {
@@ -92,8 +93,9 @@ type model struct {
 	cache Cache
 	mutex sync.RWMutex
 	subscriber event.Subscriber
-	insertLayer BeforeInsertLayer
-	eraseLayer BeforeEraseLayer
+	insertLayer func(id int, resource interface{})
+	eraseLayer func(id int, resource interface{})
+	notifyLayer func(id int, e *event.Event)
 }
 
 func (m *model) Table() database.Table {
@@ -178,6 +180,9 @@ func (m *model) Create(resource Id, context interface{}) (int, error) {
 		e.Status = StatusCreated
 		e.Data = value
 		e.Context = context
+		if m.notifyLayer != nil {
+			m.notifyLayer(int(id), e)
+		}
 		_ = event.Publish(e)
 	}
 	return int(id), nil
@@ -204,6 +209,9 @@ func (m *model) Update(resource Id, context interface{}) error {
 		e.Status = StatusUpdated
 		e.Data = value
 		e.Context = context
+		if m.notifyLayer != nil {
+			m.notifyLayer(resource.GetId(), e)
+		}
 		_ = event.Publish(e)
 	}
 	return nil
@@ -229,6 +237,9 @@ func (m *model) Delete(id int, context interface{}) error {
 		e.Status = StatusDeleted
 		e.Data = value
 		e.Context = context
+		if m.notifyLayer != nil {
+			m.notifyLayer(id, e)
+		}
 		_ = event.Publish(e)
 	}
 	return nil
@@ -255,12 +266,16 @@ func (m *model) SyncSingle(id int) (interface{}, error) {
 	return m.get(id)
 }
 
-func (m *model) SetBeforeInsertLayer(layer BeforeInsertLayer) {
+func (m *model) SetBeforeInsertLayer(layer func(id int, resource interface{})) {
 	m.insertLayer = layer
 	_ = m.Sync()
 }
 
-func (m *model) SetBeforeEraseLayer(layer BeforeEraseLayer) {
+func (m *model) SetBeforeEraseLayer(layer func(id int, resource interface{})) {
 	m.eraseLayer = layer
 	_ = m.Sync()
+}
+
+func (m *model) SetBeforeNotifyLayer(layer func(id int, e *event.Event)) {
+	m.notifyLayer = layer
 }
