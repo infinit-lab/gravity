@@ -53,6 +53,14 @@ func Shutdown() error {
 	return server.Shutdown(ctx)
 }
 
+func GetAssetsPath() string {
+	assets := config.GetString("server.assets")
+	if len(assets) == 0 {
+		assets = "./assets"
+	}
+	return assets
+}
+
 type Websocket interface {
 	Socket() *websocket.Conn
 	Context() *gin.Context
