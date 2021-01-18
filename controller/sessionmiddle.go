@@ -22,8 +22,8 @@ func SessionMiddle() gin.HandlerFunc {
 			}
 		}
 		response := Response{
-			Result:  false,
-			Error: "Unauthorized",
+			Result: false,
+			Error:  "Unauthorized",
 		}
 		c.JSON(http.StatusUnauthorized, response)
 		c.Abort()

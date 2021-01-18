@@ -76,7 +76,7 @@ func New(db database.Database, resource Id, topic string, isCache bool, tableNam
 	model.subscriber, _ = event.Subscribe(TopicSync)
 	go func() {
 		for {
-			_, ok := <- model.subscriber.Event()
+			_, ok := <-model.subscriber.Event()
 			if !ok {
 				return
 			}
@@ -88,13 +88,13 @@ func New(db database.Database, resource Id, topic string, isCache bool, tableNam
 }
 
 type model struct {
-	table database.Table
-	topic string
-	cache Cache
-	mutex sync.RWMutex
-	subscriber event.Subscriber
+	table       database.Table
+	topic       string
+	cache       Cache
+	mutex       sync.RWMutex
+	subscriber  event.Subscriber
 	insertLayer func(id int, resource interface{})
-	eraseLayer func(id int, resource interface{})
+	eraseLayer  func(id int, resource interface{})
 	notifyLayer func(id int, e *event.Event)
 }
 
