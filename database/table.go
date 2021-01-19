@@ -120,6 +120,32 @@ func (t *table) Create(data interface{}) (sql.Result, error) {
 	return ret, err
 }
 
+func (t *table) CreateSql(data interface{}) (string, []interface{}, error) {
+	fields, err := parseStructWithOmit(data, "create")
+	if err != nil {
+		printer.Trace(err)
+		return "", nil, err
+	}
+	query := "INSERT INTO " + t.tableName + " ("
+	for i, f := range fields {
+		query += "`" + f.name + "`"
+		if i != len(fields)-1 {
+			query += ", "
+		}
+	}
+	query += ") VALUES ("
+	var values []interface{}
+	for i, f := range fields {
+		query += "?"
+		if i != len(fields)-1 {
+			query += ", "
+		}
+		values = append(values, f.value)
+	}
+	query += ")"
+	return query, values, nil
+}
+
 func (t *table) Update(data interface{}, whereSql string, args ...interface{}) (sql.Result, error) {
 	fields, err := parseStructWithOmit(data, "update")
 	if err != nil {

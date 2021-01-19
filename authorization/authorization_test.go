@@ -200,6 +200,7 @@ func TestUserModel_GetAuthorization2(t *testing.T) {
 func TestUserModel_DeleteUser(t *testing.T) {
 	err := mdl.DeleteUser(userCode, userType)
 	if err != nil {
+		printer.Error(err)
 		t.Fatal(err)
 	}
 }

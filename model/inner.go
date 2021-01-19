@@ -1,9 +1,11 @@
-package model2
+package model
 
 import (
 	"github.com/infinit-lab/gravity/database"
 	"github.com/infinit-lab/gravity/event"
 	"github.com/infinit-lab/gravity/printer"
+	"github.com/infinit-lab/gravity/snow_flack"
+	"strconv"
 	"sync"
 )
 
@@ -16,12 +18,6 @@ type model struct {
 	getLayer func(resource interface{})
 	notifyLayer func(resource interface{})
 }
-
-const (
-	StatusCreated string = "created"
-	StatusUpdated string = "updated"
-	StatusDeleted string = "deleted"
-)
 
 func (m *model)init(db database.Database, resource interface{}, topic string, isCache bool, tableName string) error {
 	var err error
@@ -65,9 +61,6 @@ func (m *model)getList(whereSql string, args ...interface{}) ([]interface{}, err
 		if err != nil {
 			printer.Error(err)
 			return nil, err
-		}
-		if len(values) != 0 {
-			printer.Trace("Get from cache")
 		}
 	}
 	if len(values) == 0 {
@@ -120,17 +113,15 @@ func (m *model)get(whereSql string, args ...interface{}) (interface{}, error) {
 	var err error
 	if m.cacheTable != nil {
 		value, _ = m.cacheTable.Get(whereSql, args...)
-		if value != nil {
-			printer.Trace("Get from cache.")
-			return value, nil
+	}
+	if value == nil {
+		value, err = m.table.Get(whereSql, args...)
+		if err != nil {
+			printer.Error(err)
+			return nil, err
 		}
+		_, _ = m.cacheTable.Create(value)
 	}
-	value, err = m.table.Get(whereSql, args...)
-	if err != nil {
-		printer.Error(err)
-		return nil, err
-	}
-	_, _ = m.cacheTable.Create(value)
 	if m.getLayer != nil {
 		m.getLayer(value)
 	}
@@ -149,21 +140,30 @@ func (m *model)Get(whereSql string, args ...interface{}) (interface{}, error) {
 	return m.get(whereSql, args...)
 }
 
-func (m *model)Create(resource interface{}, context interface{}) error {
-	ret, err := m.table.Create(resource)
-	if err != nil {
-		printer.Error(err)
-		return err
+func (m *model)GetByCode(code string) (interface{}, error) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.get("WHERE `code` = ?", code)
+}
+
+func (m *model)Create(resource Code, context interface{}) (string, error) {
+	if resource.GetCode() == "" {
+		code, err := snow_flack.NextId()
+		if err != nil {
+			printer.Error(err)
+			return "", err
+		}
+		resource.SetCode(strconv.FormatInt(code, 16))
 	}
-	id, err := ret.LastInsertId()
+	_, err := m.table.Create(resource)
 	if err != nil {
 		printer.Error(err)
-		return err
+		return "", err
 	}
-	value, err := m.Get("WHERE `id` = ?", id)
+	value, err := m.Get("WHERE `code` = ?", resource.GetCode())
 	if err != nil {
 		printer.Error(err)
-		return err
+		return "", err
 	}
 	if len(m.topic) != 0 {
 		e := new(event.Event)
@@ -176,7 +176,7 @@ func (m *model)Create(resource interface{}, context interface{}) error {
 		}
 		_ = event.Publish(e)
 	}
-	return nil
+	return resource.GetCode(), nil
 }
 
 func (m *model)Update(resource interface{}, context interface{}, whereSql string, args ...interface{}) error {
@@ -208,6 +208,10 @@ func (m *model)Update(resource interface{}, context interface{}, whereSql string
 	return nil
 }
 
+func (m *model)UpdateByCode(resource Code, context interface{}) error {
+	return m.Update(resource, context, "WHERE `code` = ?", resource.GetCode())
+}
+
 func (m *model)Delete(context interface{}, whereSql string, args ...interface{}) error {
 	value, err := m.Get(whereSql, args...)
 	if err != nil {
@@ -220,7 +224,7 @@ func (m *model)Delete(context interface{}, whereSql string, args ...interface{})
 		return err
 	}
 	if m.cacheTable != nil {
-		_, _ = m.table.Delete(whereSql, args...)
+		_, _ = m.cacheTable.Delete(whereSql, args...)
 	}
 	if len(m.topic) != 0 {
 		e := new(event.Event)
@@ -234,6 +238,10 @@ func (m *model)Delete(context interface{}, whereSql string, args ...interface{})
 		_ = event.Publish(e)
 	}
 	return nil
+}
+
+func (m *model)DeleteByCode(code string, context interface{}) error {
+	return m.Delete(context, "WHERE `code` = ?", code)
 }
 
 func (m *model)Sync() error {

@@ -15,6 +15,8 @@ type Model interface {
 	Delete(context interface{}, whereSql string, args ...interface{}) error
 	Sync() error
 	SyncSingle(whereSql string, args ...interface{}) (interface{}, error)
+	SetBeforeGetLayer(layer func(resource interface{}))
+	SetBeforeNotifyLayer(layer func(resource interface{}))
 }
 
 func New(db database.Database, resource interface{}, topic string, isCache bool, tableName string) (Model, error) {

@@ -55,6 +55,14 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	values, err := m.GetList("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(values)
+	printer.Trace(string(data))
+
 	var r mdl.Resource
 	r.Name = "123456"
 	r.Creator = "5678"
@@ -70,7 +78,7 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, _ := json.Marshal(tempR)
+	data, _ = json.Marshal(tempR)
 	printer.Trace(string(data))
 
 	r = *(tempR.(*mdl.Resource))

@@ -45,6 +45,7 @@ type Table interface {
 	GetList(whereSql string, args ...interface{}) (values []interface{}, err error)
 	Get(whereSql string, args ...interface{}) (values interface{}, err error)
 	Create(data interface{}) (sql.Result, error)
+	CreateSql(data interface{}) (string, []interface{}, error)
 	Update(data interface{}, whereSql string, args ...interface{}) (sql.Result, error)
 	Delete(whereSql string, args ...interface{}) (sql.Result, error)
 }

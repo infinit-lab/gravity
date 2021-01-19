@@ -8,8 +8,8 @@ import (
 
 type Authorization struct {
 	m.PrimaryKey
-	ResourceId  int      `json:"resourceId" db:"resourceId" db_omit:"update" db_default:"0"`
-	UserId      int      `json:"userId" db:"userId" db_omit:"update" db_default:"0"`
+	ResourceCode  string      `json:"resourceCode" db:"resourceCode" db_type:"VARCHAR(64)" db_index:"index" db_omit:"update" db_default:"''"`
+	UserCode      string      `json:"userCode" db:"userCode" db_type:"VARCHAR(64)" db_index:"index" db_omit:"update" db_default:"''"`
 	IsOwner     bool     `json:"isOwner" db:"isOwner" db_omit:"update" db_default:"0"`
 	IsHeritable bool     `json:"isHeritable" db:"isHeritable" db_default:"0"`
 	IsUpdatable bool     `json:"isUpdatable" db:"isUpdatable" db_default:"0"`
@@ -39,67 +39,51 @@ func newAuthorizationModel(db database.Database) (*authorizationModel, error) {
 		printer.Error(err)
 		return nil, err
 	}
-	a.model.SetBeforeInsertLayer(func(id int, resource interface{}) {
+	a.model.SetBeforeGetLayer(func(resource interface{}) {
 		auth, ok := resource.(*Authorization)
 		if !ok {
 			return
 		}
-		value, err := a.resourceModel.model.Get(auth.ResourceId)
+		value, err := a.resourceModel.model.GetByCode(auth.ResourceCode)
 		if err != nil {
 			printer.Error(err)
 			return
 		}
-		r, ok := value.(*Resource)
-		if !ok {
-			printer.Error("Not Resource. ")
-			return
-		}
+		r := value.(*Resource)
 		auth.Resource = *r
 	})
 	return a, nil
 }
 
-func (a *authorizationModel) getAuthorizationListByUserId(userId int) ([]*Authorization, error) {
+func (a *authorizationModel) getAuthorizationListByUserCode(userCode string) ([]*Authorization, error) {
 	var authorizationList []*Authorization
-	values, err := a.model.GetList()
+	values, err := a.model.GetList("WHERE `userCode` = ?", userCode)
 	if err != nil {
 		printer.Error(err)
 		return nil, err
 	}
 	for _, value := range values {
-		authorization, ok := value.(*Authorization)
-		if !ok {
-			printer.Error("Not Authorization. ")
-			continue
-		}
-		if authorization.UserId == userId {
-			authorizationList = append(authorizationList, authorization)
-		}
+		authorization := value.(*Authorization)
+		authorizationList = append(authorizationList, authorization)
 	}
 	return authorizationList, nil
 }
 
-func (a *authorizationModel) getUserListByResourceCode(resourceCode string, resourceType string) ([]int, error) {
+func (a *authorizationModel) getUserListByResourceCode(resourceCode string, resourceType string) ([]string, error) {
 	resource, err := a.resourceModel.getResource(resourceCode, resourceType)
 	if err != nil {
 		printer.Error(err)
 		return nil, err
 	}
-	var userList []int
-	values, err := a.model.GetList()
+	var userList []string
+	values, err := a.model.GetList("WHERE `resourceCode` = ?", resource.GetCode())
 	if err != nil {
 		printer.Error(err)
 		return nil, err
 	}
 	for _, value := range values {
-		authorization, ok := value.(*Authorization)
-		if !ok {
-			printer.Error("Not Authorization. ")
-			continue
-		}
-		if authorization.ResourceId == resource.GetId() {
-			userList = append(userList, authorization.UserId)
-		}
+		authorization := value.(*Authorization)
+		userList = append(userList, authorization.UserCode)
 	}
 	return userList, nil
 }
