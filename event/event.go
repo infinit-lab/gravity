@@ -2,6 +2,7 @@ package event
 
 import (
 	"errors"
+	"github.com/infinit-lab/gravity/config"
 	"github.com/infinit-lab/gravity/printer"
 	"sync"
 )
@@ -40,24 +41,53 @@ func Publish(event *Event) error {
 	if event == nil {
 		return errors.New("The event is nil. ")
 	}
-
 	if len(event.Topic) == 0 {
 		return errors.New("Topic is empty. ")
 	}
-
-	subscriberMutex.Lock()
-	defer subscriberMutex.Unlock()
-
-	publish(event.Topic, event)
-	publish("", event)
+	publishChan <- event
 	return nil
 }
 
 var subscriberMap map[string][]Subscriber
 var subscriberMutex sync.Mutex
+var publishChan chan *Event
 
 func init() {
 	subscriberMap = make(map[string][]Subscriber)
+	workerNum := config.GetInt("event.worker")
+	if workerNum == 0 {
+		workerNum = 20
+	}
+	publishChan = make(chan *Event, workerNum)
+	for i := 0; i < workerNum; i++ {
+		go func() {
+			defer func() {
+				if err := recover(); err != nil {
+					printer.Error(err)
+				}
+			}()
+			for {
+				e := <-publishChan
+				var list []Subscriber
+				subscriberMutex.Lock()
+				topicList, ok := subscriberMap[e.Topic]
+				if ok {
+					list = append(list, topicList...)
+				}
+				allList, ok := subscriberMap[""]
+				if ok {
+					list = append(list, allList...)
+				}
+				subscriberMutex.Unlock()
+				if ok {
+					for _, s := range list {
+						temp := s.(*subscriber)
+						temp.c <- e
+					}
+				}
+			}
+		}()
+	}
 }
 
 type subscriber struct {
@@ -90,25 +120,5 @@ func (s *subscriber) Unsubscribe() {
 			subscriberMap[s.topic] = list
 			break
 		}
-	}
-}
-
-func publish(topic string, event *Event) {
-	list, ok := subscriberMap[topic]
-	if ok {
-		go func() {
-			defer func() {
-				if err := recover(); err != nil {
-					printer.Error(err)
-				}
-			}()
-			for _, s := range list {
-				temp, ok := s.(*subscriber)
-				if !ok {
-					continue
-				}
-				temp.c <- event
-			}
-		}()
 	}
 }

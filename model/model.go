@@ -76,10 +76,7 @@ func New(db database.Database, resource Id, topic string, isCache bool, tableNam
 	model.subscriber, _ = event.Subscribe(TopicSync)
 	go func() {
 		for {
-			_, ok := <-model.subscriber.Event()
-			if !ok {
-				return
-			}
+			_ = <-model.subscriber.Event()
 			_ = model.Sync()
 		}
 	}()
