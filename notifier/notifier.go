@@ -32,8 +32,51 @@ func init() {
 	}
 	notifier.timer = time.NewTimer(time.Duration(age) * time.Second)
 	go notifier.updateSessionLoop()
-	notifier.subscriber, _ = event.SubscribeAll()
-	go notifier.eventLoop()
+	notifier.subscriber, _ = event.SubscribeAll(func(e *event.Event) {
+		switch e.Topic {
+		case controller.TopicSession:
+			if e.Status == model.StatusDeleted {
+				session, ok := e.Data.(*controller.Session)
+				if !ok {
+					return
+				}
+				ws, ok := notifier.getWebsocket(session.Token)
+				if !ok {
+					return
+				}
+				_ = ws.Close()
+			}
+		default:
+			tempEvent := *e
+			tempEvent.Context = nil
+			data, _ := json.Marshal(tempEvent)
+
+			tokenList := notifier.getTokenList()
+			for _, token := range tokenList {
+				filter, ok := notifier.getFilter(e.Topic)
+				if ok {
+					session, err := controller.GetSession(token)
+					if err != nil {
+						ws, ok := notifier.getWebsocket(token)
+						if ok {
+							_ = ws.Close()
+						}
+						continue
+					}
+					if filter(session, e) == false {
+						continue
+					}
+				}
+				ws, ok := notifier.getWebsocket(token)
+				if !ok {
+					continue
+				}
+				if err := ws.WriteMessage(data); err != nil {
+					printer.Error(err)
+				}
+			}
+		}
+	})
 	server.Router().GET("/ws/notification", controller.SessionMiddle(), server.GenerateWebsocketHandlerFunc(notifier))
 }
 
@@ -120,60 +163,4 @@ func (n *notifierHandler) getFilter(topic string) (filter FilterFunc, ok bool) {
 	defer n.filterMutex.Unlock()
 	filter, ok = n.filterMap[topic]
 	return
-}
-
-func (n *notifierHandler) eventLoop() {
-	for {
-		e, ok := <-n.subscriber.Event()
-		if !ok {
-			printer.Error("quit...")
-			break
-		}
-		switch e.Topic {
-		case controller.TopicSession:
-			if e.Status == model.StatusDeleted {
-				session, ok := e.Data.(*controller.Session)
-				if !ok {
-					continue
-				}
-				ws, ok := n.getWebsocket(session.Token)
-				if !ok {
-					continue
-				}
-				_ = ws.Close()
-			}
-		default:
-			tempEvent := *e
-			tempEvent.Context = nil
-			data, _ := json.Marshal(tempEvent)
-
-			tokenList := n.getTokenList()
-			for _, token := range tokenList {
-				filter, ok := n.getFilter(e.Topic)
-				if ok {
-					session, err := controller.GetSession(token)
-					if err != nil {
-						ws, ok := n.getWebsocket(token)
-						if ok {
-							_ = ws.Close()
-						}
-						continue
-					}
-					if filter(session, e) == false {
-						continue
-					}
-				}
-				ws, ok := n.getWebsocket(token)
-				if !ok {
-					continue
-				}
-				if err := ws.WriteMessage(data); err != nil {
-					printer.Error(err)
-				}
-			}
-		}
-	}
-	n.subscriber.Unsubscribe()
-	n.subscriber, _ = event.SubscribeAll()
-	go n.eventLoop()
 }

@@ -15,11 +15,13 @@ type Event struct {
 }
 
 type Subscriber interface {
-	Event() <-chan *Event
 	Unsubscribe()
 }
 
-func Subscribe(topic string) (Subscriber, error) {
+func Subscribe(topic string, handler func(e *Event)) (Subscriber, error) {
+	if handler == nil {
+		return nil, errors.New("回调为空")
+	}
 	s := new(subscriber)
 	s.c = make(chan *Event)
 	s.topic = topic
@@ -30,11 +32,22 @@ func Subscribe(topic string) (Subscriber, error) {
 	list := subscriberMap[topic]
 	list = append(list, s)
 	subscriberMap[topic] = list
+
+	go func() {
+		for {
+			e, ok := <-s.c
+			if !ok {
+				break
+			}
+			handler(e)
+		}
+	}()
+
 	return s, nil
 }
 
-func SubscribeAll() (Subscriber, error) {
-	return Subscribe("")
+func SubscribeAll(handler func(e *Event)) (Subscriber, error) {
+	return Subscribe("", handler)
 }
 
 func Publish(event *Event) error {
@@ -93,10 +106,6 @@ func init() {
 type subscriber struct {
 	c     chan *Event
 	topic string
-}
-
-func (s *subscriber) Event() <-chan *Event {
-	return s.c
 }
 
 func (s *subscriber) Unsubscribe() {
