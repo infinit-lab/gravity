@@ -8,11 +8,11 @@ import (
 )
 
 type model struct {
-	table database.Table
-	topic string
+	table         database.Table
+	topic         string
 	cacheDatabase database.Database
-	cacheTable database.Table
-	mutex sync.RWMutex
+	cacheTable    database.Table
+	mutex         sync.RWMutex
 }
 
 const (
@@ -21,7 +21,7 @@ const (
 	StatusDeleted string = "deleted"
 )
 
-func (m *model)init(db database.Database, resource interface{}, topic string, isCache bool, tableName string) error {
+func (m *model) init(db database.Database, resource interface{}, topic string, isCache bool, tableName string) error {
 	var err error
 	m.table, err = db.NewTable(resource, tableName)
 	if err != nil {
@@ -51,11 +51,11 @@ func (m *model)init(db database.Database, resource interface{}, topic string, is
 	return nil
 }
 
-func (m *model)Table() database.Table {
+func (m *model) Table() database.Table {
 	return m.table
 }
 
-func (m *model)getList(whereSql string, args ...interface{}) ([]interface{}, error) {
+func (m *model) getList(whereSql string, args ...interface{}) ([]interface{}, error) {
 	var values []interface{}
 	var err error
 	if m.cacheTable != nil {
@@ -86,7 +86,7 @@ func (m *model)getList(whereSql string, args ...interface{}) ([]interface{}, err
 	return values, nil
 }
 
-func (m *model)get(whereSql string, args ...interface{}) (interface{}, error) {
+func (m *model) get(whereSql string, args ...interface{}) (interface{}, error) {
 	var value interface{}
 	var err error
 	if m.cacheTable != nil {
@@ -105,19 +105,19 @@ func (m *model)get(whereSql string, args ...interface{}) (interface{}, error) {
 	return value, nil
 }
 
-func (m *model)GetList(whereSql string, args ...interface{}) ([]interface{}, error) {
+func (m *model) GetList(whereSql string, args ...interface{}) ([]interface{}, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	return m.getList(whereSql, args...)
 }
 
-func (m *model)Get(whereSql string, args ...interface{}) (interface{}, error) {
+func (m *model) Get(whereSql string, args ...interface{}) (interface{}, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	return m.get(whereSql, args...)
 }
 
-func (m *model)Create(resource interface{}, context interface{}) error {
+func (m *model) Create(resource interface{}, context interface{}) error {
 	ret, err := m.table.Create(resource)
 	if err != nil {
 		printer.Error(err)
@@ -140,16 +140,16 @@ func (m *model)Create(resource interface{}, context interface{}) error {
 		e.Data = value
 		e.Context = context
 		/*
-		if m.notifyLayer != nil {
-			m.notifyLayer(int(id), e)
-		}
+			if m.notifyLayer != nil {
+				m.notifyLayer(int(id), e)
+			}
 		*/
 		_ = event.Publish(e)
 	}
 	return nil
 }
 
-func (m *model)Update(resource interface{}, context interface{}, whereSql string, args ...interface{}) error {
+func (m *model) Update(resource interface{}, context interface{}, whereSql string, args ...interface{}) error {
 	ret, err := m.table.Update(resource, whereSql, args...)
 	if err != nil {
 		printer.Error(err)
@@ -171,16 +171,16 @@ func (m *model)Update(resource interface{}, context interface{}, whereSql string
 		e.Data = value
 		e.Context = context
 		/*
-		if m.notifyLayer != nil {
-			m.notifyLayer(resource.GetId(), e)
-		}
+			if m.notifyLayer != nil {
+				m.notifyLayer(resource.GetId(), e)
+			}
 		*/
 		_ = event.Publish(e)
 	}
 	return nil
 }
 
-func (m *model)Delete(context interface{}, whereSql string, args ...interface{}) error {
+func (m *model) Delete(context interface{}, whereSql string, args ...interface{}) error {
 	value, err := m.Get(whereSql, args...)
 	if err != nil {
 		printer.Error(err)
@@ -201,16 +201,16 @@ func (m *model)Delete(context interface{}, whereSql string, args ...interface{})
 		e.Data = value
 		e.Context = context
 		/*
-		if m.notifyLayer != nil {
-			m.notifyLayer(id, e)
-		}
+			if m.notifyLayer != nil {
+				m.notifyLayer(id, e)
+			}
 		*/
 		_ = event.Publish(e)
 	}
 	return nil
 }
 
-func (m *model)Sync() error {
+func (m *model) Sync() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if m.cacheTable == nil {
@@ -229,7 +229,7 @@ func (m *model)Sync() error {
 	return nil
 }
 
-func (m *model)SyncSingle(whereSql string, args ...interface{}) (interface{}, error) {
+func (m *model) SyncSingle(whereSql string, args ...interface{}) (interface{}, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if m.cacheTable != nil {
@@ -241,4 +241,3 @@ func (m *model)SyncSingle(whereSql string, args ...interface{}) (interface{}, er
 	}
 	return m.get(whereSql, args...)
 }
-
