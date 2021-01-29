@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 
     sprintf(publicPem.path, "public.pem");
     sprintf(privatePem.path, "private.pem");
-    // 准备：生成公钥与私钥，公钥用于加密，私钥用于解密, 客户机需保存公钥与私钥，注册机需保存私钥
+    // 准备：生成公钥与私钥，公钥用于加密，私钥用于解密, 客户机需保存公钥，注册机需保存私钥
     ret = generateRsaKey(publicPem, privatePem);
     if (ret == ERROR_FAIL) {
         qDebug() << __FUNCTION__ << __LINE__ << "Failed to generateRsaKey";
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     }
 
     // 第五步：解密证书文件获取证书内容
-    ret = decrypt(fingerprint, licensePath, decryptLicense);
+    ret = decrypt(licensePath, decryptLicense);
     if (ret == ERROR_FAIL) {
         qDebug() << __FUNCTION__ << __LINE__ << "Failed to decrypt";
         goto failed;

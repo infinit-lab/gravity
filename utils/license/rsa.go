@@ -31,6 +31,20 @@ func SetPrivatePem(privateFile string) error {
 	return nil
 }
 
+type reader struct {
+
+}
+
+func (r *reader)Read(buffer []byte) (int, error) {
+	if len(buffer) == 0 {
+		return 0, errors.New("缓存长度为0")
+	}
+	for i := 0; i < len(buffer); i++ {
+		buffer[i] = 0xaa
+	}
+	return len(buffer), nil
+}
+
 func RsaEncrypt(content []byte) ([]byte, error) {
 	if publicPem == nil {
 		return nil, errors.New("未设置公钥")
@@ -48,7 +62,7 @@ func RsaEncrypt(content []byte) ([]byte, error) {
 	if !ok {
 		return nil, errors.New("非RSA公钥")
 	}
-	encrypt, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, content)
+	encrypt, err := rsa.EncryptPKCS1v15(&reader{}, publicKey, content)
 	if err != nil {
 		printer.Error(err)
 		return nil, err

@@ -67,21 +67,13 @@ func GenerateLicense(fingerprint string, license License) (string, error) {
 	return machine.Encode(f, data)
 }
 
-func LoadLicense(fingerprint string, lic string) (*License, error) {
-	if privatePem == nil {
-		return nil, errors.New("未设置私钥")
-	}
-	f, err := hex.DecodeString(fingerprint)
+func LoadLicense(lic string) (*License, error) {
+	fingerprint, err := machine.GetMachineFingerprint()
 	if err != nil {
 		printer.Error(err)
 		return nil, err
 	}
-	f, err = RsaDecrypt(f)
-	if err != nil {
-		printer.Error(err)
-		return nil, err
-	}
-	encrypt, err := machine.Decode(f, lic)
+	encrypt, err := machine.Decode(fingerprint, lic)
 	if err != nil {
 		printer.Error(err)
 		return nil, err

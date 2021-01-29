@@ -9,7 +9,7 @@ typedef int (*fGenerateRsaKey)(T_PATH, T_PATH);
 typedef int (*fSetPublicPemFile)(T_PATH);
 typedef int (*fEncrypt)(T_FINGERPRINT, T_PATH, T_LICENSE*);
 typedef int (*fSetPrivatePemFile)(T_PATH);
-typedef int (*fDecrypt)(T_FINGERPRINT, T_PATH, T_LICENSE*);
+typedef int (*fDecrypt)(T_PATH, T_LICENSE*);
 
 static fGenerateFingerprint generateFingerPrint;
 static fGenerateRsaKey generateRsaKey;

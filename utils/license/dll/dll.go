@@ -145,18 +145,17 @@ func SetPrivatePemFile(privatePemPath C.struct_T_PATH) C.int {
 }
 
 //export Decrypt
-func Decrypt(fingerprint C.struct_T_FINGERPRINT, path C.struct_T_PATH, lic *C.struct_T_LICENSE) C.int {
+func Decrypt(path C.struct_T_PATH, lic *C.struct_T_LICENSE) C.int {
 	if lic == nil {
 		return C.ERROR_FAIL
 	}
-	f := utils.CArrayToGoString(unsafe.Pointer(&fingerprint.fingerprint[0]), C.STRING_MAX_LENGTH)
 	p := utils.CArrayToGoString(unsafe.Pointer(&path.path[0]), C.STRING_MAX_LENGTH)
 	content, err := ioutil.ReadFile(p)
 	if err != nil {
 		printer.Error(err)
 		return C.ERROR_FAIL
 	}
-	l, err := license.LoadLicense(f, string(content))
+	l, err := license.LoadLicense(string(content))
 	if err != nil {
 		printer.Error(err)
 		return C.ERROR_FAIL

@@ -34,7 +34,7 @@ func TestGenerateLicense(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lic, err := LoadLicense(fingerprint, content)
+	lic, err := LoadLicense(content)
 	if err != nil {
 		t.Fatal(err)
 	}
