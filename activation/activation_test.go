@@ -34,4 +34,12 @@ func TestGetFingerprint(t *testing.T) {
 	time.Sleep(time.Second)
 
 	printer.Trace(GetStatus())
+
+	err = UpdateLicense(fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	printer.Trace(GetStatus())
+	time.Sleep(time.Minute)
+	printer.Trace(GetStatus())
 }

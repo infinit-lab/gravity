@@ -67,13 +67,13 @@ func GenerateLicense(fingerprint string, license License) (string, error) {
 	return machine.Encode(f, data)
 }
 
-func LoadLicense(lic string) (*License, error) {
+func LoadLicense(content string) (*License, error) {
 	fingerprint, err := machine.GetMachineFingerprint()
 	if err != nil {
 		printer.Error(err)
 		return nil, err
 	}
-	encrypt, err := machine.Decode(fingerprint, lic)
+	encrypt, err := machine.Decode(fingerprint, content)
 	if err != nil {
 		printer.Error(err)
 		return nil, err

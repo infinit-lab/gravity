@@ -247,7 +247,12 @@ func GetAuthorizations() []license.Authorization {
 func updateLicense(licenseFile string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
-	l, err := license.LoadLicense(licenseFile)
+	content, err := ioutil.ReadFile(licenseFile)
+	if err != nil {
+		printer.Error(err)
+		return err
+	}
+	l, err := license.LoadLicense(string(content))
 	if err != nil {
 		printer.Error(err)
 		return err
@@ -277,7 +282,7 @@ func UpdateLicense(licenseFile string) error {
 	}
 	e := new(event.Event)
 	e.Topic = TopicActivation
-	err = updateLocalLicense()
+	err = updateLocalLicense(0)
 	if err != nil {
 		printer.Error(err)
 		e.Status = StatusUnactivated
@@ -288,4 +293,5 @@ func UpdateLicense(licenseFile string) error {
 		status = e.Status
 		_ = event.Publish(e)
 	}
+	return nil
 }
