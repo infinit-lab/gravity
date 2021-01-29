@@ -12,8 +12,10 @@ import (
 
 type Activation struct {
 	Fingerprint string `json:"fingerprint"`
+	Status      string `json:"status"`
 	IsForever   bool   `json:"isForever"`
 	Duration    int    `json:"duration"`
+	CurrentDatetime string `json:"currentDatetime"`
 }
 
 func init() {
@@ -21,8 +23,10 @@ func init() {
 	ctrl.GET("", func(context *gin.Context, session *controller.Session) (interface{}, error) {
 		a := Activation{
 			Fingerprint: fingerprint,
+			Status:      status,
 			IsForever:   isForever,
 			Duration:    duration,
+			CurrentDatetime: currentDatetime,
 		}
 		return a, nil
 	})

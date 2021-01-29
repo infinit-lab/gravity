@@ -30,6 +30,7 @@ var status string
 var authorizations []license.Authorization
 var isForever bool
 var duration int
+var currentDatetime string
 
 func init() {
 	status = StatusUnactivated
@@ -220,6 +221,10 @@ func updateLocalLicense(period int) error {
 		printer.Error(err)
 		return err
 	}
+	authorizations = lic.Authorizations
+	isForever = lic.IsForever
+	duration = lic.ValidDuration
+	currentDatetime = lic.CurrentDatetime
 	err = writeLicense(getLocalLicenseFile())
 	if err != nil {
 		printer.Error(err)
@@ -230,9 +235,6 @@ func updateLocalLicense(period int) error {
 	} else if delta > 0 {
 		return nil
 	}
-	authorizations = lic.Authorizations
-	isForever = lic.IsForever
-	duration = lic.ValidDuration
 	return errors.New("授权到期")
 }
 
