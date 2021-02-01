@@ -24,5 +24,8 @@ func GetDiskSerialNumber() ([]string, error) {
 			serialNumbers = append(serialNumbers, line)
 		}
 	}
+	if len(serialNumbers) == 0 {
+		serialNumbers = append(serialNumbers, "")
+	}
 	return serialNumbers, nil
 }

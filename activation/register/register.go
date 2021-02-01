@@ -53,7 +53,7 @@ func main() {
 		printer.Error(err)
 		return
 	}
-	err = ioutil.WriteFile(fingerprint, []byte(content), os.ModePerm)
+	err = ioutil.WriteFile(fingerprint + ".cert", []byte(content), os.ModePerm)
 	if err != nil {
 		printer.Error(err)
 		return

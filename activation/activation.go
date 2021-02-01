@@ -79,12 +79,12 @@ func getDatetimeDelta() (int, error) {
 	if lic == nil {
 		return 0, errors.New("未加载授权证书")
 	}
-	validDateTime, err := time.Parse("2006-01-02 15:04:05", lic.ValidDatetime)
+	validDateTime, err := time.ParseInLocation("2006-01-02 15:04:05", lic.ValidDatetime, time.UTC)
 	if err != nil {
 		printer.Error(err)
 		return 0, err
 	}
-	currentDateTime, err := time.Parse("2006-01-02 15:04:05", lic.CurrentDatetime)
+	currentDateTime, err := time.ParseInLocation("2006-01-02 15:04:05", lic.CurrentDatetime, time.UTC)
 	if err != nil {
 		printer.Error(err)
 		return 0, err
@@ -107,7 +107,7 @@ func updateDatetime(delta int) error {
 		return errors.New("未加载授权文件")
 	}
 	now := time.Now().UTC()
-	original, err  := time.Parse("2006-01-02 15:04:05", lic.CurrentDatetime)
+	original, err  := time.ParseInLocation("2006-01-02 15:04:05", lic.CurrentDatetime, time.UTC)
 	if err != nil {
 		printer.Error(err)
 		return err
