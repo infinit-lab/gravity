@@ -150,6 +150,12 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	router = gin.Default()
+	router.Use(func(context *gin.Context) {
+		isPrintAccess := config.GetBool("server.print_access")
+		if isPrintAccess {
+			printer.Trace(context.Request.RemoteAddr, context.Request.Method, context.Request.URL.String())
+		}
+	})
 }
 
 type websocketImpl struct {

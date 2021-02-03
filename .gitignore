@@ -8,6 +8,10 @@
 *.db
 *.sum
 *.bak
+*.zip
+*.tar.gz
+*.cert
+*.pem
 
 # Test binary, built with `go test -c`
 *.test
