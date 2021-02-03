@@ -57,7 +57,7 @@ type Model interface {
 	DeleteByCode(code string, context interface{}) error
 	Sync() error
 	SetBeforeGetLayer(layer func(resource interface{}))
-	SetBeforeNotifyLayer(layer func(resource interface{}))
+	SetBeforeNotifyLayer(layer func(e *event.Event))
 }
 
 func New(db database.Database, resource Code, topic string, isCache bool, tableName string) (Model, error) {

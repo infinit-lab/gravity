@@ -17,7 +17,7 @@ type model struct {
 	cacheTable database.Table
 	mutex sync.RWMutex
 	getLayer func(resource interface{})
-	notifyLayer func(resource interface{})
+	notifyLayer func(e *event.Event)
 }
 
 func (m *model)init(db database.Database, resource interface{}, topic string, isCache bool, tableName string) error {
@@ -28,24 +28,26 @@ func (m *model)init(db database.Database, resource interface{}, topic string, is
 		return err
 	}
 	m.topic = topic
-	m.cacheDatabase, err = database.NewDatabase("sqlite3", ":memory:")
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	m.cacheTable, err = m.cacheDatabase.NewTable(resource, tableName)
-	if err != nil {
-		m.cacheDatabase.Close()
-		m.cacheDatabase = nil
-		printer.Error(err)
-		return err
-	}
-	err = m.Sync()
-	if err != nil {
-		m.cacheDatabase.Close()
-		m.cacheDatabase = nil
-		printer.Error(err)
-		return err
+	if isCache {
+		m.cacheDatabase, err = database.NewDatabase("sqlite3", ":memory:?shared=false")
+		if err != nil {
+			printer.Error(err)
+			return err
+		}
+		m.cacheTable, err = m.cacheDatabase.NewTable(resource, tableName)
+		if err != nil {
+			m.cacheDatabase.Close()
+			m.cacheDatabase = nil
+			printer.Error(err)
+			return err
+		}
+		err = m.Sync()
+		if err != nil {
+			m.cacheDatabase.Close()
+			m.cacheDatabase = nil
+			printer.Error(err)
+			return err
+		}
 	}
 	return nil
 }
@@ -295,7 +297,7 @@ func (m *model)SetBeforeGetLayer(layer func(resource interface{})) {
 	m.getLayer = layer
 }
 
-func (m *model)SetBeforeNotifyLayer(layer func(resource interface{})) {
+func (m *model)SetBeforeNotifyLayer(layer func(e *event.Event)) {
 	m.notifyLayer = layer
 }
 
