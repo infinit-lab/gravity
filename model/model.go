@@ -56,7 +56,6 @@ type Model interface {
 	Delete(context interface{}, whereSql string, args ...interface{}) error
 	DeleteByCode(code string, context interface{}) error
 	Sync() error
-	SyncSingle(whereSql string, args ...interface{}) (interface{}, error)
 	SetBeforeGetLayer(layer func(resource interface{}))
 	SetBeforeNotifyLayer(layer func(resource interface{}))
 }

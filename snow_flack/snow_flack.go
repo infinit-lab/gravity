@@ -57,7 +57,7 @@ func NewIdWorker(NodeId int64) (*IdWorker, error) {
 	idWorker.sequence = 0
 	idWorker.twepoch = twepoch
 	idWorker.mutex = sync.Mutex{}
-	printer.Error("worker starting. timestamp left shift %d, District id bits %d, worker id bits %d, sequence bits %d, workerid %d", timestampLeftShift, DistrictIdBits, NodeIdBits, sequenceBits, NodeId)
+	printer.Tracef("worker starting. timestamp left shift %d, District id bits %d, worker id bits %d, sequence bits %d, workerid %d", timestampLeftShift, DistrictIdBits, NodeIdBits, sequenceBits, NodeId)
 	return idWorker, nil
 }
 

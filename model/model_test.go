@@ -92,6 +92,13 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	values, err = m.GetList("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ = json.Marshal(values)
+	printer.Trace(string(data))
+
 	tempR, err = m.GetByCode(code)
 	if err != nil {
 		printer.Error(err)
