@@ -4,36 +4,37 @@ import (
 	"github.com/infinit-lab/gravity/database"
 	"github.com/infinit-lab/gravity/event"
 	"github.com/infinit-lab/gravity/printer"
-	"sync"
 )
 
-type Id interface {
-	GetId() int
-	SetId(id int)
+type Code interface {
+	GetCode() string
+	SetCode(code string)
 }
 
 type PrimaryKey struct {
 	database.PrimaryKey
+	Code string `json:"code" db:"code" db_type:"VARCHAR(64)" db_index:"unique" db_omit:"update" db_default:"''"`
+}
+
+func (p *PrimaryKey) GetCode() string {
+	return p.Code
+}
+
+func (p *PrimaryKey) SetCode(code string) {
+	p.Code = code
 }
 
 type Resource struct {
 	database.Resource
+	Code string `json:"code" db:"code" db_type:"VARCHAR(64)" db_index:"unique" db_omit:"update" db_default:"''"`
 }
 
-func (p *PrimaryKey) GetId() int {
-	return p.Id
+func (r *Resource) GetCode() string {
+	return r.Code
 }
 
-func (p *PrimaryKey) SetId(id int) {
-	p.Id = id
-}
-
-func (r *Resource) GetId() int {
-	return r.Id
-}
-
-func (r *Resource) SetId(id int) {
-	r.Id = id
+func (r *Resource) SetCode(code string) {
+	r.Code = code
 }
 
 const (
@@ -46,229 +47,31 @@ const (
 type Model interface {
 	Table() database.Table
 
-	GetList() ([]interface{}, error)
-	Get(id int) (interface{}, error)
-	Create(resource Id, context interface{}) (int, error)
-	Update(resource Id, context interface{}) error
-	Delete(id int, context interface{}) error
+	GetList(whereSql string, args ...interface{}) ([]interface{}, error)
+	Get(whereSql string, args ...interface{}) (interface{}, error)
+	GetByCode(code string) (interface{}, error)
+	Create(resource Code, context interface{}) (string, error)
+	Update(resource interface{}, context interface{}, whereSql string, args ...interface{}) error
+	UpdateByCode(resource Code, context interface{}) error
+	Delete(context interface{}, whereSql string, args ...interface{}) error
+	DeleteByCode(code string, context interface{}) error
 	Sync() error
-	SyncSingle(id int) (interface{}, error)
-	SetBeforeInsertLayer(layer func(id int, resource interface{}))
-	SetBeforeEraseLayer(layer func(id int, resource interface{}))
-	SetBeforeNotifyLayer(layer func(id int, e *event.Event))
+	SetBeforeGetLayer(layer func(resource interface{}))
+	SetBeforeNotifyLayer(layer func(resource interface{}))
 }
 
-func New(db database.Database, resource Id, topic string, isCache bool, tableName string) (Model, error) {
-	tb, err := db.NewTable(resource, tableName)
+func New(db database.Database, resource Code, topic string, isCache bool, tableName string) (Model, error) {
+	m := new(model)
+	err := m.init(db, resource, topic, isCache, tableName)
 	if err != nil {
 		printer.Error(err)
 		return nil, err
 	}
-	model := new(model)
-	model.table = tb
-	model.topic = topic
-	if isCache {
-		model.cache = NewCache()
-		_, _ = model.GetList()
-	} else {
-		model.cache = nil
-	}
-	model.subscriber, _ = event.Subscribe(TopicSync, func(e *event.Event) {
-		_ = model.Sync()
+	_, _ = event.Subscribe(TopicSync, func(e *event.Event) {
+		err := m.Sync()
+		if err != nil {
+			printer.Error(err)
+		}
 	})
-
-	return model, nil
-}
-
-type model struct {
-	table       database.Table
-	topic       string
-	cache       Cache
-	mutex       sync.RWMutex
-	subscriber  event.Subscriber
-	insertLayer func(id int, resource interface{})
-	eraseLayer  func(id int, resource interface{})
-	notifyLayer func(id int, e *event.Event)
-}
-
-func (m *model) Table() database.Table {
-	return m.table
-}
-
-func (m *model) getList() ([]interface{}, error) {
-	if m.cache != nil {
-		values := m.cache.GetAll()
-		if len(values) != 0 {
-			return values, nil
-		}
-	}
-	values, err := m.table.GetList("")
-	if err != nil {
-		printer.Error(err)
-		return nil, err
-	}
-	if m.cache != nil {
-		m.cache.Clear()
-		for _, value := range values {
-			v, ok := value.(Id)
-			if !ok {
-				continue
-			}
-			m.cache.Insert(v.GetId(), v, m.insertLayer)
-		}
-	}
-	return values, err
-}
-
-func (m *model) GetList() ([]interface{}, error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-	return m.getList()
-}
-
-func (m *model) get(id int) (interface{}, error) {
-	if m.cache != nil {
-		value, ok := m.cache.Get(id)
-		if ok {
-			return value, nil
-		}
-	}
-	value, err := m.table.Get("WHERE `id` = ? LIMIT 1", id)
-	if err != nil {
-		printer.Error(err)
-		return nil, err
-	}
-	if m.cache != nil {
-		m.cache.Insert(id, value, m.insertLayer)
-	}
-	return value, nil
-}
-
-func (m *model) Get(id int) (interface{}, error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-	return m.get(id)
-}
-
-func (m *model) Create(resource Id, context interface{}) (int, error) {
-	ret, err := m.table.Create(resource)
-	if err != nil {
-		printer.Error(err)
-		return 0, err
-	}
-
-	id, err := ret.LastInsertId()
-	if err != nil {
-		printer.Error(err)
-		return 0, err
-	}
-	value, err := m.Get(int(id))
-	if err != nil {
-		printer.Error(err)
-		return 0, err
-	}
-	if len(m.topic) != 0 {
-		e := new(event.Event)
-		e.Topic = m.topic
-		e.Status = StatusCreated
-		e.Data = value
-		e.Context = context
-		if m.notifyLayer != nil {
-			m.notifyLayer(int(id), e)
-		}
-		_ = event.Publish(e)
-	}
-	return int(id), nil
-}
-
-func (m *model) Update(resource Id, context interface{}) error {
-	ret, err := m.table.Update(resource, "WHERE `id` = ?", resource.GetId())
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	rows, err := ret.RowsAffected()
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	if rows == 0 {
-		return nil
-	}
-	value, err := m.SyncSingle(resource.GetId())
-	if len(m.topic) != 0 {
-		e := new(event.Event)
-		e.Topic = m.topic
-		e.Status = StatusUpdated
-		e.Data = value
-		e.Context = context
-		if m.notifyLayer != nil {
-			m.notifyLayer(resource.GetId(), e)
-		}
-		_ = event.Publish(e)
-	}
-	return nil
-}
-
-func (m *model) Delete(id int, context interface{}) error {
-	value, err := m.Get(id)
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	_, err = m.table.Delete("WHERE `id` = ?", id)
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	if m.cache != nil {
-		m.cache.Erase(id, m.eraseLayer)
-	}
-	if len(m.topic) != 0 {
-		e := new(event.Event)
-		e.Topic = m.topic
-		e.Status = StatusDeleted
-		e.Data = value
-		e.Context = context
-		if m.notifyLayer != nil {
-			m.notifyLayer(id, e)
-		}
-		_ = event.Publish(e)
-	}
-	return nil
-}
-
-func (m *model) Sync() error {
-	if m.cache == nil {
-		return nil
-	}
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	m.cache.Clear()
-	_, err := m.getList()
-	return err
-}
-
-func (m *model) SyncSingle(id int) (interface{}, error) {
-	if m.cache == nil {
-		return m.Get(id)
-	}
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	m.cache.Erase(id, m.eraseLayer)
-	return m.get(id)
-}
-
-func (m *model) SetBeforeInsertLayer(layer func(id int, resource interface{})) {
-	m.insertLayer = layer
-	_ = m.Sync()
-}
-
-func (m *model) SetBeforeEraseLayer(layer func(id int, resource interface{})) {
-	m.eraseLayer = layer
-	_ = m.Sync()
-}
-
-func (m *model) SetBeforeNotifyLayer(layer func(id int, e *event.Event)) {
-	m.notifyLayer = layer
+	return m, nil
 }
