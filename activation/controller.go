@@ -11,10 +11,10 @@ import (
 )
 
 type Activation struct {
-	Fingerprint string `json:"fingerprint"`
-	Status      string `json:"status"`
-	IsForever   bool   `json:"isForever"`
-	Duration    int    `json:"duration"`
+	Fingerprint     string `json:"fingerprint"`
+	Status          string `json:"status"`
+	IsForever       bool   `json:"isForever"`
+	Duration        int    `json:"duration"`
 	CurrentDatetime string `json:"currentDatetime"`
 }
 
@@ -22,10 +22,10 @@ func init() {
 	ctrl, _ := controller.New("/api/1/activation")
 	ctrl.GET("", func(context *gin.Context, session *controller.Session) (interface{}, error) {
 		a := Activation{
-			Fingerprint: fingerprint,
-			Status:      status,
-			IsForever:   isForever,
-			Duration:    duration,
+			Fingerprint:     fingerprint,
+			Status:          status,
+			IsForever:       isForever,
+			Duration:        duration,
 			CurrentDatetime: currentDatetime,
 		}
 		return a, nil

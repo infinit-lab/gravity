@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	StatusActivated string = "activated"
+	StatusActivated   string = "activated"
 	StatusUnactivated string = "unactivated"
 )
 
@@ -107,7 +107,7 @@ func updateDatetime(delta int) error {
 		return errors.New("未加载授权文件")
 	}
 	now := time.Now().UTC()
-	original, err  := time.ParseInLocation("2006-01-02 15:04:05", lic.CurrentDatetime, time.UTC)
+	original, err := time.ParseInLocation("2006-01-02 15:04:05", lic.CurrentDatetime, time.UTC)
 	if err != nil {
 		printer.Error(err)
 		return err

@@ -32,10 +32,9 @@ func SetPrivatePem(privateFile string) error {
 }
 
 type reader struct {
-
 }
 
-func (r *reader)Read(buffer []byte) (int, error) {
+func (r *reader) Read(buffer []byte) (int, error) {
 	if len(buffer) == 0 {
 		return 0, errors.New("缓存长度为0")
 	}

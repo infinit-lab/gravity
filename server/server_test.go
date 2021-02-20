@@ -1,9 +1,9 @@
 package server
 
 import (
-	"device_framework/config"
-	"device_framework/printer"
 	"github.com/gorilla/websocket"
+	"github.com/infinit-lab/gravity/config"
+	"github.com/infinit-lab/gravity/printer"
 	"net/url"
 	"os"
 	"sync"
