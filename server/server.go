@@ -91,35 +91,8 @@ func GenerateWebsocketHandlerFunc(handler WebsocketHandler) gin.HandlerFunc {
 			ws:               ws,
 			context:          context,
 			isClose:          false,
-			writeMessageChan: make(chan []byte),
-			writeBytesChan:   make(chan []byte),
 		}
 
-		go func() {
-			defer func() {
-				if err := recover(); err != nil {
-					printer.Error(err)
-				}
-			}()
-			for !w.isClose {
-				select {
-				case message, ok := <-w.writeMessageChan:
-					if !ok {
-						return
-					}
-					if err := w.ws.WriteMessage(websocket.TextMessage, message); err != nil {
-						printer.Error(err)
-					}
-				case bytes, ok := <-w.writeBytesChan:
-					if !ok {
-						return
-					}
-					if err := w.ws.WriteMessage(websocket.BinaryMessage, bytes); err != nil {
-						printer.Error(err)
-					}
-				}
-			}
-		}()
 		handler.NewConnection(&w)
 		for {
 			messageType, bytes, err := w.ws.ReadMessage()
@@ -134,8 +107,6 @@ func GenerateWebsocketHandlerFunc(handler WebsocketHandler) gin.HandlerFunc {
 			}
 		}
 		w.isClose = true
-		close(w.writeMessageChan)
-		close(w.writeBytesChan)
 		_ = w.ws.Close()
 		handler.Disconnected(&w)
 	}
@@ -183,7 +154,10 @@ func (w *websocketImpl) WriteMessage(message []byte) error {
 			printer.Error(err)
 		}
 	}()
-	w.writeMessageChan <- message
+	if err := w.ws.WriteMessage(websocket.TextMessage, message); err != nil {
+		printer.Error(err)
+		return err
+	}
 	return nil
 }
 
@@ -196,7 +170,9 @@ func (w *websocketImpl) WriteBytes(bytes []byte) error {
 			printer.Error(err)
 		}
 	}()
-	w.writeBytesChan <- bytes
+	if err := w.ws.WriteMessage(websocket.BinaryMessage, bytes); err != nil {
+		printer.Error(err)
+	}
 	return nil
 }
 
