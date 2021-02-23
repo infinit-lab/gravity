@@ -101,9 +101,9 @@ func GenerateWebsocketHandlerFunc(handler WebsocketHandler) gin.HandlerFunc {
 			}
 			switch messageType {
 			case websocket.TextMessage:
-				go handler.ReadMessage(&w, bytes)
+				handler.ReadMessage(&w, bytes)
 			case websocket.BinaryMessage:
-				go handler.ReadBytes(&w, bytes)
+				handler.ReadBytes(&w, bytes)
 			}
 		}
 		w.isClose = true
