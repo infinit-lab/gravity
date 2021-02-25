@@ -107,19 +107,35 @@ func (c *controller) OPTIONSWithSession(relativePath string, handler HandlerFunc
 }
 
 func response(context *gin.Context, data interface{}, err error) {
-	var status int
-	var response Response
-	if err == nil {
-		response.Result = true
-		response.Error = ""
-		status = http.StatusOK
+	h := context.Writer.Header().Get("Content-Type")
+	if len(h) == 0 || h == "application/json" {
+		var status int
+		var response Response
+		if err == nil {
+			response.Result = true
+			response.Error = ""
+			status = http.StatusOK
+		} else {
+			response.Result = false
+			response.Error = err.Error()
+			status = http.StatusInternalServerError
+		}
+		response.Data = data
+		context.JSON(status, response)
 	} else {
-		response.Result = false
-		response.Error = err.Error()
-		status = http.StatusInternalServerError
+		if err == nil {
+			context.Writer.WriteHeader(http.StatusOK)
+			_, err = context.Writer.Write(data.([]byte))
+			if err != nil {
+				printer.Error(err)
+			}
+		} else {
+			var response Response
+			response.Result = false
+			response.Error = err.Error()
+			context.JSON(http.StatusInternalServerError, response)
+		}
 	}
-	response.Data = data
-	context.JSON(status, response)
 }
 
 func middleFunc(handler HandlerFunc, middle []gin.HandlerFunc) []gin.HandlerFunc {
