@@ -20,23 +20,12 @@ type TestResource struct {
 }
 
 func TestNewModel(t *testing.T) {
-	subscriber, err := event.Subscribe("model_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	_, _ = event.Subscribe("model_test", func(e *event.Event) {
 		for {
-			e, ok := <-subscriber.Event()
-			if !ok {
-				break
-			}
 			data, _ := json.Marshal(e)
 			printer.Trace(string(data))
 		}
-	}()
+	})
 
 	db, err := database.NewDatabase("sqlite3", "test.db")
 	if err != nil {

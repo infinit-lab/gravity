@@ -40,7 +40,7 @@ func Run() error {
 			if len(context.Request.URL.Path) == 0 {
 				return
 			}
-			if context.Request.URL.Path[len(context.Request.URL.Path) - 1] == '/' {
+			if context.Request.URL.Path[len(context.Request.URL.Path)-1] == '/' {
 				p := assets + context.Request.URL.Path + "index.html"
 				printer.Trace(p)
 				_, err := os.Stat(p)
@@ -100,9 +100,9 @@ func GenerateWebsocketHandlerFunc(handler WebsocketHandler) gin.HandlerFunc {
 			return
 		}
 		w := websocketImpl{
-			ws:               ws,
-			context:          context,
-			isClose:          false,
+			ws:      ws,
+			context: context,
+			isClose: false,
 		}
 
 		handler.NewConnection(&w)
