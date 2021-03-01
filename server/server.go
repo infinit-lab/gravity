@@ -37,6 +37,9 @@ func Run() error {
 	router.NoRoute(func(context *gin.Context) {
 		if fileHandler != nil {
 			fileHandler.ServeHTTP(context.Writer, context.Request)
+			if context.Writer.Status() == http.StatusNotFound {
+				context.JSON(http.StatusNotFound, gin.H{"result": false, "message": "Not Found. "})
+			}
 		} else {
 			context.JSON(http.StatusNotFound, gin.H{"result": false, "message": "Not Found. "})
 		}
