@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"github.com/infinit-lab/gravity/config"
 	"github.com/infinit-lab/gravity/printer"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -37,14 +37,18 @@ func Run() error {
 	fileHandler = http.FileServer(http.Dir(assets))
 	router.NoRoute(func(context *gin.Context) {
 		if fileHandler != nil {
-			fileHandler.ServeHTTP(context.Writer, context.Request)
-			if context.Writer.Status() == http.StatusNotFound {
-				buffer := bytes.NewBuffer([]byte{})
-				err := context.Request.Response.Write(buffer)
-				if err != nil {
-					printer.Error(err)
+			if len(context.Request.URL.Path) == 0 {
+				return
+			}
+			if context.Request.URL.Path[len(context.Request.URL.Path) - 1] == '/' {
+				p := assets + context.Request.URL.Path + "index.html"
+				printer.Trace(p)
+				_, err := os.Stat(p)
+				if err != nil && os.IsNotExist(err) {
+					return
 				}
 			}
+			fileHandler.ServeHTTP(context.Writer, context.Request)
 		} else {
 			context.JSON(http.StatusNotFound, gin.H{"result": false, "message": "Not Found. "})
 		}
