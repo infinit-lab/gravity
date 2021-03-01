@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -38,7 +39,11 @@ func Run() error {
 		if fileHandler != nil {
 			fileHandler.ServeHTTP(context.Writer, context.Request)
 			if context.Writer.Status() == http.StatusNotFound {
-				context.JSON(http.StatusNotFound, gin.H{"result": false, "message": "Not Found. "})
+				buffer := bytes.NewBuffer([]byte{})
+				err := context.Request.Response.Write(buffer)
+				if err != nil {
+					printer.Error(err)
+				}
 			}
 		} else {
 			context.JSON(http.StatusNotFound, gin.H{"result": false, "message": "Not Found. "})
