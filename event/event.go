@@ -5,6 +5,7 @@ import (
 	"github.com/infinit-lab/gravity/config"
 	"github.com/infinit-lab/gravity/printer"
 	"sync"
+	"time"
 )
 
 type Event struct {
@@ -57,13 +58,22 @@ func Publish(event *Event) error {
 	if len(event.Topic) == 0 {
 		return errors.New("Topic is empty. ")
 	}
-	publishChan <- event
+	publishMutex.Lock()
+	if idleWorkNum == 0 {
+		publishEventCache = append(publishEventCache, event)
+	} else {
+		publishChan <- event
+	}
+	publishMutex.Unlock()
 	return nil
 }
 
 var subscriberMap map[string][]Subscriber
 var subscriberMutex sync.Mutex
 var publishChan chan *Event
+var idleWorkNum int
+var publishEventCache []*Event
+var publishMutex sync.Mutex
 
 func init() {
 	subscriberMap = make(map[string][]Subscriber)
@@ -80,7 +90,12 @@ func init() {
 				}
 			}()
 			for {
+				idleWorkNum++
 				e := <-publishChan
+				idleWorkNum--
+				if idleWorkNum == 0 {
+					printer.Trace("all event worker is used.")
+				}
 				var list []Subscriber
 				subscriberMutex.Lock()
 				topicList, ok := subscriberMap[e.Topic]
@@ -101,6 +116,24 @@ func init() {
 			}
 		}()
 	}
+
+	go func() {
+		for {
+			time.Sleep(10 * time.Millisecond)
+			publishMutex.Lock()
+			if len(publishEventCache) != 0 {
+				if idleWorkNum > 2 {
+					publishChan <- publishEventCache[0]
+					if len(publishEventCache) == 1 {
+						publishEventCache = nil
+					} else {
+						publishEventCache = publishEventCache[1:]
+					}
+				}
+			}
+			publishMutex.Unlock()
+		}
+	}()
 }
 
 type subscriber struct {
