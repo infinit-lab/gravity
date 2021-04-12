@@ -47,6 +47,7 @@ type Model interface {
 	Table() database.Table
 
 	GetList() ([]interface{}, error)
+	GetListWithWhereSql(whereSql string, args ...interface{}) ([]interface{}, error)
 	Get(id int) (interface{}, error)
 	Create(resource Id, context interface{}) (int, error)
 	Update(resource Id, context interface{}) error
@@ -124,6 +125,48 @@ func (m *model) GetList() ([]interface{}, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 	return m.getList()
+}
+
+func (m *model) getIdList(whereSql string, args ...interface{}) ([]int, error) {
+	rows, err := m.Table().Database().Query("SELECT `id` FROM " + m.Table().TableName() + " " + whereSql, args...)
+	if err != nil {
+		printer.Error(err)
+		return nil, err
+	}
+	var idList []int
+	for rows.Next() {
+		var id int
+		err = rows.Scan(&id)
+		if err != nil {
+			printer.Error(err)
+			return nil, err
+		}
+		idList = append(idList, id)
+	}
+	return idList, nil
+}
+
+func (m *model) GetListWithWhereSql(whereSql string, args ...interface{}) ([]interface{}, error) {
+	if m.cache != nil {
+		idList, err := m.getIdList(whereSql, args...)
+		if err != nil {
+			printer.Error(err)
+			return nil, err
+		}
+		m.mutex.RLock()
+		defer m.mutex.RUnlock()
+		var list []interface{}
+		for _, id := range idList {
+			i, err := m.get(id)
+			if err != nil {
+				printer.Error(err)
+			}
+			list = append(list, i)
+		}
+		return list, nil
+	} else {
+		return m.Table().GetList(whereSql, args...)
+	}
 }
 
 func (m *model) get(id int) (interface{}, error) {
