@@ -59,7 +59,7 @@ func Publish(event *Event) error {
 		return errors.New("Topic is empty. ")
 	}
 	publishMutex.Lock()
-	if idleWorkNum == 0 {
+	if idleWorkNum < 2 {
 		publishEventCache = append(publishEventCache, event)
 	} else {
 		publishChan <- event
@@ -79,7 +79,7 @@ func init() {
 	subscriberMap = make(map[string][]Subscriber)
 	workerNum := config.GetInt("event.worker")
 	if workerNum == 0 {
-		workerNum = 20
+		workerNum = 30
 	}
 	publishChan = make(chan *Event, workerNum)
 	for i := 0; i < workerNum; i++ {

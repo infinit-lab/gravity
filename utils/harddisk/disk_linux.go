@@ -3,7 +3,7 @@
 package harddisk
 
 import (
-	"github.com/infinit-lab/yolanda/logutils"
+	"github.com/infinit-lab/gravity/printer"
 	"io/ioutil"
 	"os/exec"
 	"regexp"
@@ -14,7 +14,7 @@ func GetDiskSerialNumber() ([]string, error) {
 	cmd := exec.Command("blkid")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		logutils.Error("Failed to CombinedOutpu. error: ", err)
+		printer.Error("Failed to CombinedOutpu. error: ", err)
 		return nil, err
 	}
 	blkMap := make(map[string]string)
@@ -36,7 +36,7 @@ func GetDiskSerialNumber() ([]string, error) {
 
 	data, err := ioutil.ReadFile("/etc/fstab")
 	if err != nil {
-		logutils.Error("Failed to ReadFile. error: ", err)
+		printer.Error("Failed to ReadFile. error: ", err)
 		return nil, err
 	}
 	lines = strings.Split(string(data), "\n")
