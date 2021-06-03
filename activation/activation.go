@@ -297,3 +297,12 @@ func UpdateLicense(licenseFile string) error {
 	}
 	return nil
 }
+
+func GetLicenseDuration() (bool, string, int, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if lic == nil {
+		return false, "", 0, errors.New("无证书")
+	}
+	return lic.IsForever, lic.ValidDatetime, lic.ValidDuration, nil
+}
