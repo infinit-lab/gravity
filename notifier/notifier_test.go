@@ -1,24 +1,7 @@
 package notifier
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/infinit-lab/gravity/config"
-	"github.com/infinit-lab/gravity/controller"
-	"github.com/infinit-lab/gravity/event"
 	"github.com/infinit-lab/gravity/model"
-	"github.com/infinit-lab/gravity/module"
-	"github.com/infinit-lab/gravity/printer"
-	"github.com/infinit-lab/gravity/server"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
 
 type TestResource struct {
@@ -26,6 +9,7 @@ type TestResource struct {
 	Description string `json:"description" db:"description"`
 }
 
+/*
 var id int
 
 func TestNotifier(t *testing.T) {
@@ -234,3 +218,5 @@ func TestNotifier(t *testing.T) {
 	_ = server.Shutdown()
 	wg.Wait()
 }
+
+*/
