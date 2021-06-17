@@ -50,6 +50,9 @@ func init() {
 		printer.Error("生成机器指纹失败")
 		os.Exit(1)
 	}
+}
+
+func Run() {
 	go func() {
 		t := time.Minute
 		for {
@@ -179,17 +182,27 @@ func getLocalLicenseFile() string {
 	return licenseFile
 }
 
+var funcDefaultValidDays func() int
+
+func SetDefaultValidDays(defaultValidDays func() int) {
+	funcDefaultValidDays = defaultValidDays
+}
+
 func updateLocalLicense(period int) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	lic = readLicense(getLocalLicenseFile())
 	if lic == nil {
+		defaultValidDays := 0
+		if funcDefaultValidDays != nil {
+			defaultValidDays = funcDefaultValidDays()
+		}
 		lic = new(license.License)
 		lic.IsForever = false
-		lic.ValidDatetime = time.Now().UTC().Format("2006-01-02 15:04:05")
-		lic.CurrentDatetime = lic.ValidDatetime
-		lic.ValidDuration = 0
-		lic.CurrentDuration = 0
+		lic.CurrentDatetime = time.Now().UTC().Format("2006-01-02 15:04:05")
+		lic.ValidDatetime = time.Now().AddDate(0, 0, defaultValidDays).UTC().Format("2006-01-02 15:04:05")
+		lic.ValidDuration = int((time.Duration(defaultValidDays) * 24 * time.Hour).Seconds())
+		lic.CurrentDuration = lic.ValidDuration
 	}
 	dateTimeDelta, err := getDatetimeDelta()
 	if err != nil {
