@@ -31,6 +31,7 @@ var authorizations []license.Authorization
 var isForever bool
 var duration int
 var currentDatetime string
+var isRunning bool
 
 func init() {
 	status = StatusUnactivated
@@ -50,9 +51,14 @@ func init() {
 		printer.Error("生成机器指纹失败")
 		os.Exit(1)
 	}
+	isRunning = false
 }
 
 func Run() {
+	if isRunning {
+		return
+	}
+	isRunning = true
 	go func() {
 		t := time.Minute
 		for {
