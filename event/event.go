@@ -2,10 +2,8 @@ package event
 
 import (
 	"errors"
-	"github.com/infinit-lab/gravity/config"
 	"github.com/infinit-lab/gravity/printer"
 	"sync"
-	"time"
 )
 
 type Event struct {
@@ -58,82 +56,149 @@ func Publish(event *Event) error {
 	if len(event.Topic) == 0 {
 		return errors.New("Topic is empty. ")
 	}
-	publishMutex.Lock()
-	if idleWorkNum < 2 {
-		publishEventCache = append(publishEventCache, event)
-	} else {
-		publishChan <- event
+	/*
+		publishMutex.Lock()
+		if idleWorkNum < 2 {
+			publishEventCache = append(publishEventCache, event)
+		} else {
+			publishChan <- event
+		}
+		publishMutex.Unlock()
+	*/
+	c, err := getIdlePublishChan()
+	if err != nil {
+		printer.Error(err)
+		return err
 	}
-	publishMutex.Unlock()
+	c <- event
 	return nil
+}
+
+func getIdlePublishChan() (chan *Event, error) {
+	publishChanPoolMutex.Lock()
+	defer publishChanPoolMutex.Unlock()
+	for c, used := range publishChanPool {
+		if !used {
+			return c, nil
+		}
+	}
+	printer.Trace("New publish chan")
+	c := make(chan *Event, 10)
+	publishChanPool[c] = false
+
+	go func(c chan *Event) {
+		defer func() {
+			if err := recover(); err != nil {
+				printer.Error(err)
+			}
+			publishChanPoolMutex.Lock()
+			delete(publishChanPool, c)
+			close(c)
+			publishChanPoolMutex.Unlock()
+		}()
+		for {
+			publishChanPoolMutex.Lock()
+			publishChanPool[c] = false
+			publishChanPoolMutex.Unlock()
+			e := <-c
+			publishChanPoolMutex.Lock()
+			publishChanPool[c] = true
+			publishChanPoolMutex.Unlock()
+
+			var list []Subscriber
+			subscriberMutex.Lock()
+			topicList, ok := subscriberMap[e.Topic]
+			if ok {
+				list = append(list, topicList...)
+			}
+			allList, ok := subscriberMap[""]
+			if ok {
+				list = append(list, allList...)
+			}
+			subscriberMutex.Unlock()
+			if ok {
+				for _, s := range list {
+					temp := s.(*subscriber)
+					temp.c <- e
+				}
+			}
+		}
+	}(c)
+	return c, nil
 }
 
 var subscriberMap map[string][]Subscriber
 var subscriberMutex sync.Mutex
-var publishChan chan *Event
-var idleWorkNum int
-var publishEventCache []*Event
-var publishMutex sync.Mutex
+
+// var publishChan chan *Event
+// var idleWorkNum int
+// var publishEventCache []*Event
+// var publishMutex sync.Mutex
+var publishChanPool map[chan *Event]bool
+var publishChanPoolMutex sync.Mutex
 
 func init() {
 	subscriberMap = make(map[string][]Subscriber)
-	workerNum := config.GetInt("event.worker")
-	if workerNum == 0 {
-		workerNum = 30
-	}
-	publishChan = make(chan *Event, workerNum)
-	for i := 0; i < workerNum; i++ {
-		go func() {
-			defer func() {
-				if err := recover(); err != nil {
-					printer.Error(err)
+	publishChanPool = make(map[chan *Event]bool)
+	/*
+		workerNum := config.GetInt("event.worker")
+		if workerNum == 0 {
+			workerNum = 30
+		}
+		publishChan = make(chan *Event, workerNum)
+		for i := 0; i < workerNum; i++ {
+			go func() {
+				defer func() {
+					if err := recover(); err != nil {
+						printer.Error(err)
+					}
+				}()
+				for {
+					idleWorkNum++
+					e := <-publishChan
+					idleWorkNum--
+					if idleWorkNum == 0 {
+						printer.Trace("all event worker is used.")
+					}
+					var list []Subscriber
+					subscriberMutex.Lock()
+					topicList, ok := subscriberMap[e.Topic]
+					if ok {
+						list = append(list, topicList...)
+					}
+					allList, ok := subscriberMap[""]
+					if ok {
+						list = append(list, allList...)
+					}
+					subscriberMutex.Unlock()
+					if ok {
+						for _, s := range list {
+							temp := s.(*subscriber)
+							temp.c <- e
+						}
+					}
 				}
 			}()
+		}
+
+		go func() {
 			for {
-				idleWorkNum++
-				e := <-publishChan
-				idleWorkNum--
-				if idleWorkNum == 0 {
-					printer.Trace("all event worker is used.")
-				}
-				var list []Subscriber
-				subscriberMutex.Lock()
-				topicList, ok := subscriberMap[e.Topic]
-				if ok {
-					list = append(list, topicList...)
-				}
-				allList, ok := subscriberMap[""]
-				if ok {
-					list = append(list, allList...)
-				}
-				subscriberMutex.Unlock()
-				if ok {
-					for _, s := range list {
-						temp := s.(*subscriber)
-						temp.c <- e
+				time.Sleep(10 * time.Millisecond)
+				publishMutex.Lock()
+				if len(publishEventCache) != 0 {
+					if idleWorkNum > 2 {
+						publishChan <- publishEventCache[0]
+						if len(publishEventCache) == 1 {
+							publishEventCache = nil
+						} else {
+							publishEventCache = publishEventCache[1:]
+						}
 					}
 				}
+				publishMutex.Unlock()
 			}
 		}()
-	}
-
-	go func() {
-		for {
-			time.Sleep(10 * time.Millisecond)
-			publishMutex.Lock()
-			if len(publishEventCache) != 0 {
-				if idleWorkNum > 2 {
-					publishChan <- publishEventCache[0]
-					if len(publishEventCache) == 1 {
-						publishEventCache = nil
-					} else {
-						publishEventCache = publishEventCache[1:]
-					}
-				}
-			}
-			publishMutex.Unlock()
-		}
-	}()
+	*/
 }
 
 type subscriber struct {
