@@ -10,7 +10,7 @@ import (
 )
 
 type Test struct {
-	Resource
+	Data
 	Name string `gorm:"column:name;type:VARCHAR(256);not null;default:"`
 }
 
@@ -45,7 +45,7 @@ func TestCreate(t *testing.T) {
 	TestModel_GetList(t)
 
 	code, err := m.Create(&Test{
-		Resource: Resource{},
+		Data: Data{},
 		Name:     "name",
 	}, nil)
 	if err != nil {
@@ -62,7 +62,7 @@ func TestCreate(t *testing.T) {
 	TestModel_GetList(t)
 
 	err = m.Update(&Test{
-		Resource: Resource{
+		Data: Data{
 			Code:      code,
 		},
 		Name: "update_name",
@@ -106,7 +106,7 @@ func TestModel_Begin(t *testing.T) {
 	}()
 	var code string
 	code, err = m.Create(&Test{
-		Resource: Resource{},
+		Data: Data{},
 		Name:     "name",
 	}, nil)
 	if err != nil {
@@ -114,7 +114,7 @@ func TestModel_Begin(t *testing.T) {
 	}
 
 	err = m.Update(&Test{
-		Resource: Resource{
+		Data: Data{
 			Code:      code,
 		},
 		Name: "update_name",

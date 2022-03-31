@@ -15,19 +15,19 @@ import (
 
 type model struct {
 	db         *gorm.DB
-	resource   IResource
+	data   IData
 	tx         *gorm.DB
 	mutex      sync.Mutex
-	cache      map[string]IResource
+	cache      map[string]IData
 	cacheMutex sync.RWMutex
 	eventList  []*event.Event
 }
 
-func (m *model) init(db *gorm.DB, resource IResource) error {
+func (m *model) init(db *gorm.DB, data IData) error {
 	m.db = db
-	m.resource = resource
-	m.cache = make(map[string]IResource)
-	err := m.db.AutoMigrate(resource)
+	m.data = data
+	m.cache = make(map[string]IData)
+	err := m.db.AutoMigrate(data)
 	if err != nil {
 		printer.Error(err)
 		return err
@@ -76,7 +76,7 @@ func (m *model) deleteResource(code string) {
 	delete(m.cache, code)
 }
 
-func (m *model) getResource(code string) (IResource, bool) {
+func (m *model) getResource(code string) (IData, bool) {
 	m.cacheMutex.RLock()
 	defer m.cacheMutex.RUnlock()
 	r, ok := m.cache[code]
@@ -86,14 +86,14 @@ func (m *model) getResource(code string) (IResource, bool) {
 	return r, true
 }
 
-func (m *model) insertResource(r IResource) {
+func (m *model) insertResource(r IData) {
 	m.cacheMutex.Lock()
 	defer m.cacheMutex.Unlock()
 	m.cache[r.GetCode()] = r
 }
 
-func (m *model) notify(status string, r IResource, context interface{}) {
-	topic := m.resource.Topic()
+func (m *model) notify(status string, r IData, context interface{}) {
+	topic := m.data.Topic()
 	if len(topic) == 0 {
 		return
 	}
@@ -109,14 +109,14 @@ func (m *model) notify(status string, r IResource, context interface{}) {
 	}
 }
 
-func (m *model) Create(r IResource, context interface{}) (string, error) {
+func (m *model) Create(data IData, context interface{}) (string, error) {
 	if m.tx == nil {
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
 	}
 	code := strings.ReplaceAll(uuid.NewV4().String(), "-", "")
-	r.SetCode(code)
-	result := m.getDB().Create(r)
+	data.SetCode(code)
+	result := m.getDB().Create(data)
 	if result.Error != nil {
 		printer.Error(result.Error)
 		return "", result.Error
@@ -133,25 +133,25 @@ func (m *model) Create(r IResource, context interface{}) (string, error) {
 	return code, nil
 }
 
-func (m *model) Update(r IResource, context interface{}) error {
+func (m *model) Update(data IData, context interface{}) error {
 	if m.tx == nil {
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
 	}
-	temp, err := m.Get(r.GetCode())
+	temp, err := m.Get(data.GetCode())
 	if err != nil {
 		printer.Error(err)
 		return err
 	}
-	r.SetID(temp.GetID())
-	result := m.getDB().Updates(r)
+	data.SetID(temp.GetID())
+	result := m.getDB().Updates(data)
 	if result.Error != nil {
 		printer.Error(err)
 		return err
 	}
-	m.deleteResource(r.GetCode())
+	m.deleteResource(data.GetCode())
 
-	temp, err = m.Get(r.GetCode())
+	temp, err = m.Get(data.GetCode())
 	if err != nil {
 		printer.Error(err)
 		return err
@@ -180,15 +180,15 @@ func (m *model) Delete(code string, context interface{}) error {
 	return nil
 }
 
-func (m *model) newResource() IResource {
-	t := reflect.TypeOf(m.resource)
+func (m *model) newResource() IData {
+	t := reflect.TypeOf(m.data)
 	if t.Kind() == reflect.Ptr {
-		return reflect.New(t.Elem()).Interface().(IResource)
+		return reflect.New(t.Elem()).Interface().(IData)
 	}
-	return reflect.New(t).Interface().(IResource)
+	return reflect.New(t).Interface().(IData)
 }
 
-func (m *model) Get(code string) (IResource, error) {
+func (m *model) Get(code string) (IData, error) {
 	r, ok := m.getResource(code)
 	if ok {
 		return r, nil
@@ -208,7 +208,7 @@ func (m *model) Get(code string) (IResource, error) {
 }
 
 func (m *model) GetList(query string, conditions ...interface{}) (interface{}, error) {
-	slice := reflect.New(reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(m.resource)), 0, 0).Type()).Elem().Interface()
+	slice := reflect.New(reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(m.data)), 0, 0).Type()).Elem().Interface()
 	var result *gorm.DB
 	if len(query) == 0 {
 		result = m.getDB().Find(&slice)

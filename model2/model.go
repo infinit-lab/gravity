@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type IResource interface {
+type IData interface {
 	GetID() uint
 	SetID(id uint)
 	GetCode() string
@@ -14,7 +14,7 @@ type IResource interface {
 	Topic() string
 }
 
-type Resource struct {
+type Data struct {
 	ID        uint           `gorm:"primarykey"`
 	CreatedAt time.Time      `json:"createAt"`
 	UpdatedAt time.Time      `json:"updateAt"`
@@ -22,23 +22,23 @@ type Resource struct {
 	Code      string         `json:"code" gorm:"column:code;type:VARCHAR(256);unique_index;not null;"`
 }
 
-func (r *Resource) GetCode() string {
+func (r *Data) GetCode() string {
 	return r.Code
 }
 
-func (r *Resource) SetCode(code string) {
+func (r *Data) SetCode(code string) {
 	r.Code = code
 }
 
-func (r *Resource) GetID() uint {
+func (r *Data) GetID() uint {
 	return r.ID
 }
 
-func (r *Resource) SetID(id uint) {
+func (r *Data) SetID(id uint) {
 	r.ID = id
 }
 
-func (r *Resource) Topic() string {
+func (r *Data) Topic() string {
 	return ""
 }
 
@@ -46,16 +46,16 @@ type Model interface {
 	Begin()
 	Commit()
 	Rollback()
-	Create(r IResource, context interface{}) (code string, err error)
-	Update(r IResource, context interface{}) error
+	Create(data IData, context interface{}) (code string, err error)
+	Update(data IData, context interface{}) error
 	Delete(code string, context interface{}) error
-	Get(code string) (IResource, error)
+	Get(code string) (IData, error)
 	GetList(query string, conditions ...interface{}) (interface{}, error)
 }
 
-func New(db *gorm.DB, resource IResource) (Model, error) {
+func New(db *gorm.DB, data IData) (Model, error) {
 	m := new(model)
-	err := m.init(db, resource)
+	err := m.init(db, data)
 	if err != nil {
 		printer.Error(err)
 		return nil, err
