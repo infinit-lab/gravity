@@ -74,6 +74,24 @@ func Publish(event *Event) error {
 	return nil
 }
 
+func PublishList(eventList []*Event) error {
+	c, err := getIdlePublishChan()
+	if err != nil {
+		printer.Error(err)
+		return err
+	}
+	for _, e := range eventList {
+		if e == nil {
+			continue
+		}
+		if len(e.Topic) == 0 {
+			continue
+		}
+		c <- e
+	}
+	return nil
+}
+
 func getIdlePublishChan() (chan *Event, error) {
 	publishChanPoolMutex.Lock()
 	defer publishChanPoolMutex.Unlock()
@@ -116,11 +134,9 @@ func getIdlePublishChan() (chan *Event, error) {
 				list = append(list, allList...)
 			}
 			subscriberMutex.Unlock()
-			if ok {
-				for _, s := range list {
-					temp := s.(*subscriber)
-					temp.c <- e
-				}
+			for _, s := range list {
+				temp := s.(*subscriber)
+				temp.c <- e
 			}
 		}
 	}(c)

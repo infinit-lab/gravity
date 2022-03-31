@@ -1,243 +1,224 @@
 package model2
 
 import (
-	"github.com/infinit-lab/gravity/database"
+	"errors"
+	"fmt"
 	"github.com/infinit-lab/gravity/event"
+	mdl "github.com/infinit-lab/gravity/model"
 	"github.com/infinit-lab/gravity/printer"
+	uuid "github.com/satori/go.uuid"
+	"gorm.io/gorm"
+	"reflect"
+	"strings"
 	"sync"
 )
 
 type model struct {
-	table         database.Table
-	topic         string
-	cacheDatabase database.Database
-	cacheTable    database.Table
-	mutex         sync.RWMutex
+	db         *gorm.DB
+	resource   IResource
+	tx         *gorm.DB
+	mutex      sync.Mutex
+	cache      map[string]IResource
+	cacheMutex sync.RWMutex
+	eventList  []*event.Event
 }
 
-const (
-	StatusCreated string = "created"
-	StatusUpdated string = "updated"
-	StatusDeleted string = "deleted"
-)
-
-func (m *model) init(db database.Database, resource interface{}, topic string, isCache bool, tableName string) error {
-	var err error
-	m.table, err = db.NewTable(resource, tableName)
+func (m *model) init(db *gorm.DB, resource IResource) error {
+	m.db = db
+	m.resource = resource
+	m.cache = make(map[string]IResource)
+	err := m.db.AutoMigrate(resource)
 	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	m.topic = topic
-	m.cacheDatabase, err = database.NewDatabase("sqlite3", ":memory:")
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	m.cacheTable, err = m.cacheDatabase.NewTable(resource, tableName)
-	if err != nil {
-		m.cacheDatabase.Close()
-		m.cacheDatabase = nil
-		printer.Error(err)
-		return err
-	}
-	err = m.Sync()
-	if err != nil {
-		m.cacheDatabase.Close()
-		m.cacheDatabase = nil
 		printer.Error(err)
 		return err
 	}
 	return nil
 }
 
-func (m *model) Table() database.Table {
-	return m.table
-}
-
-func (m *model) getList(whereSql string, args ...interface{}) ([]interface{}, error) {
-	var values []interface{}
-	var err error
-	if m.cacheTable != nil {
-		values, err = m.cacheTable.GetList(whereSql, args...)
-		if err != nil {
-			printer.Error(err)
-			return nil, err
-		}
-		if len(values) != 0 {
-			printer.Trace("Get from cache")
-		}
-	}
-	if len(values) == 0 {
-		values, err = m.table.GetList(whereSql, args...)
-		if err != nil {
-			printer.Error(err)
-			return nil, err
-		}
-		for _, value := range values {
-			_, err := m.cacheTable.Create(value)
-			if err != nil {
-				printer.Error(err)
-				_, _ = m.cacheTable.Delete("")
-				return nil, err
-			}
-		}
-	}
-	return values, nil
-}
-
-func (m *model) get(whereSql string, args ...interface{}) (interface{}, error) {
-	var value interface{}
-	var err error
-	if m.cacheTable != nil {
-		value, _ = m.cacheTable.Get(whereSql, args...)
-		if value != nil {
-			printer.Trace("Get from cache.")
-			return value, nil
-		}
-	}
-	value, err = m.table.Get(whereSql, args...)
-	if err != nil {
-		printer.Error(err)
-		return nil, err
-	}
-	_, _ = m.cacheTable.Create(value)
-	return value, nil
-}
-
-func (m *model) GetList(whereSql string, args ...interface{}) ([]interface{}, error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-	return m.getList(whereSql, args...)
-}
-
-func (m *model) Get(whereSql string, args ...interface{}) (interface{}, error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-	return m.get(whereSql, args...)
-}
-
-func (m *model) Create(resource interface{}, context interface{}) error {
-	ret, err := m.table.Create(resource)
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	id, err := ret.LastInsertId()
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	value, err := m.Get("WHERE `id` = ?", id)
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	if len(m.topic) != 0 {
-		e := new(event.Event)
-		e.Topic = m.topic
-		e.Status = StatusCreated
-		e.Data = value
-		e.Context = context
-		/*
-			if m.notifyLayer != nil {
-				m.notifyLayer(int(id), e)
-			}
-		*/
-		_ = event.Publish(e)
-	}
-	return nil
-}
-
-func (m *model) Update(resource interface{}, context interface{}, whereSql string, args ...interface{}) error {
-	ret, err := m.table.Update(resource, whereSql, args...)
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	rows, err := ret.RowsAffected()
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	if rows == 0 {
-		return nil
-	}
-	value, err := m.SyncSingle(whereSql, args...)
-	if len(m.topic) != 0 {
-		e := new(event.Event)
-		e.Topic = m.topic
-		e.Status = StatusUpdated
-		e.Data = value
-		e.Context = context
-		/*
-			if m.notifyLayer != nil {
-				m.notifyLayer(resource.GetId(), e)
-			}
-		*/
-		_ = event.Publish(e)
-	}
-	return nil
-}
-
-func (m *model) Delete(context interface{}, whereSql string, args ...interface{}) error {
-	value, err := m.Get(whereSql, args...)
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	_, err = m.table.Delete(whereSql, args...)
-	if err != nil {
-		printer.Error(err)
-		return err
-	}
-	if m.cacheTable != nil {
-		_, _ = m.table.Delete(whereSql, args...)
-	}
-	if len(m.topic) != 0 {
-		e := new(event.Event)
-		e.Topic = m.topic
-		e.Status = StatusDeleted
-		e.Data = value
-		e.Context = context
-		/*
-			if m.notifyLayer != nil {
-				m.notifyLayer(id, e)
-			}
-		*/
-		_ = event.Publish(e)
-	}
-	return nil
-}
-
-func (m *model) Sync() error {
+func (m *model) Begin() {
 	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	if m.cacheTable == nil {
-		return nil
+	if m.tx != nil {
+		m.tx.Rollback()
+		m.tx = nil
 	}
-	_, err := m.cacheTable.Delete("")
+	m.tx = m.db.Begin()
+	m.eventList = make([]*event.Event, 0)
+}
+
+func (m *model) Commit() {
+	if m.tx != nil {
+		m.tx.Commit()
+		m.tx = nil
+	}
+	_ = event.PublishList(m.eventList)
+	m.mutex.Unlock()
+}
+
+func (m *model) Rollback() {
+	if m.tx != nil {
+		m.tx.Rollback()
+		m.tx = nil
+	}
+	m.eventList = nil
+	m.mutex.Unlock()
+}
+
+func (m *model) getDB() *gorm.DB {
+	if m.tx != nil {
+		return m.tx
+	}
+	return m.db
+}
+
+func (m *model) deleteResource(code string) {
+	m.cacheMutex.Lock()
+	defer m.cacheMutex.Unlock()
+	delete(m.cache, code)
+}
+
+func (m *model) getResource(code string) (IResource, bool) {
+	m.cacheMutex.RLock()
+	defer m.cacheMutex.RUnlock()
+	r, ok := m.cache[code]
+	if !ok {
+		return nil, false
+	}
+	return r, true
+}
+
+func (m *model) insertResource(r IResource) {
+	m.cacheMutex.Lock()
+	defer m.cacheMutex.Unlock()
+	m.cache[r.GetCode()] = r
+}
+
+func (m *model) notify(status string, r IResource, context interface{}) {
+	topic := m.resource.Topic()
+	if len(topic) == 0 {
+		return
+	}
+	e := new(event.Event)
+	e.Topic = topic
+	e.Status = status
+	e.Data = r
+	e.Context = context
+	if m.eventList != nil {
+		m.eventList = append(m.eventList, e)
+	} else {
+		_ = event.Publish(e)
+	}
+}
+
+func (m *model) Create(r IResource, context interface{}) (string, error) {
+	if m.tx == nil {
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+	}
+	code := strings.ReplaceAll(uuid.NewV4().String(), "-", "")
+	r.SetCode(code)
+	result := m.getDB().Create(r)
+	if result.Error != nil {
+		printer.Error(result.Error)
+		return "", result.Error
+	}
+
+	temp, err := m.Get(code)
+	if err != nil {
+		printer.Error(err)
+		return "", err
+	}
+
+	m.notify(mdl.StatusCreated, temp, context)
+
+	return code, nil
+}
+
+func (m *model) Update(r IResource, context interface{}) error {
+	if m.tx == nil {
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+	}
+	temp, err := m.Get(r.GetCode())
 	if err != nil {
 		printer.Error(err)
 		return err
 	}
-	_, err = m.getList("")
+	r.SetID(temp.GetID())
+	result := m.getDB().Updates(r)
+	if result.Error != nil {
+		printer.Error(err)
+		return err
+	}
+	m.deleteResource(r.GetCode())
+
+	temp, err = m.Get(r.GetCode())
 	if err != nil {
 		printer.Error(err)
 		return err
 	}
+	m.notify(mdl.StatusUpdated, temp, context)
 	return nil
 }
 
-func (m *model) SyncSingle(whereSql string, args ...interface{}) (interface{}, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	if m.cacheTable != nil {
-		_, err := m.cacheTable.Delete(whereSql, args...)
-		if err != nil {
-			printer.Error(err)
-			return nil, err
-		}
+func (m *model) Delete(code string, context interface{}) error {
+	if m.tx == nil {
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
 	}
-	return m.get(whereSql, args...)
+	r, err := m.Get(code)
+	if err != nil {
+		printer.Error(err)
+		return err
+	}
+	result := m.getDB().Delete(r)
+	if result.Error != nil {
+		printer.Error(err)
+		return err
+	}
+	m.deleteResource(code)
+	m.notify(mdl.StatusDeleted, r, context)
+	return nil
 }
+
+func (m *model) newResource() IResource {
+	t := reflect.TypeOf(m.resource)
+	if t.Kind() == reflect.Ptr {
+		return reflect.New(t.Elem()).Interface().(IResource)
+	}
+	return reflect.New(t).Interface().(IResource)
+}
+
+func (m *model) Get(code string) (IResource, error) {
+	r, ok := m.getResource(code)
+	if ok {
+		return r, nil
+	}
+	r = m.newResource()
+	db := m.getDB()
+	result := db.Where("`code` = ?", code).Find(r)
+	if result.Error != nil {
+		printer.Error(result.Error)
+		return nil, result.Error
+	}
+	if r.GetID() == 0 {
+		return nil, errors.New(fmt.Sprintf("Not Found %s", code))
+	}
+	m.insertResource(r)
+	return r, nil
+}
+
+func (m *model) GetList(query string, conditions ...interface{}) (interface{}, error) {
+	slice := reflect.New(reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(m.resource)), 0, 0).Type()).Elem().Interface()
+	var result *gorm.DB
+	if len(query) == 0 {
+		result = m.getDB().Find(&slice)
+	} else {
+		result = m.getDB().Where(query, conditions...).Find(&slice)
+	}
+	if result.Error != nil {
+		printer.Error(result.Error)
+		return nil, result.Error
+	}
+	return slice, nil
+}
+

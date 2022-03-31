@@ -2,98 +2,138 @@ package model2
 
 import (
 	"encoding/json"
-	"github.com/infinit-lab/gravity/database"
 	"github.com/infinit-lab/gravity/event"
-	mdl "github.com/infinit-lab/gravity/model"
 	"github.com/infinit-lab/gravity/printer"
-	"sync"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"testing"
-	"time"
 )
 
-var id int
-var wg sync.WaitGroup
-
-func TestInit(t *testing.T) {
-	subscriber, _ := event.Subscribe("testTopic")
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			e, ok := <-subscriber.Event()
-			if !ok {
-				break
-			}
-			switch e.Status {
-			case StatusCreated:
-				r := e.Data.(*mdl.Resource)
-				id = r.Id
-				data, _ := json.Marshal(r)
-				printer.Trace("Create", string(data))
-			case StatusUpdated:
-				r := e.Data.(*mdl.Resource)
-				id = r.Id
-				data, _ := json.Marshal(r)
-				printer.Trace("Update", string(data))
-			case StatusDeleted:
-				r := e.Data.(*mdl.Resource)
-				id = r.Id
-				data, _ := json.Marshal(r)
-				printer.Trace("Delete", string(data))
-				subscriber.Unsubscribe()
-			}
-		}
-	}()
+type Test struct {
+	Resource
+	Name string `gorm:"column:name;type:VARCHAR(256);not null;default:"`
 }
 
+func (t *Test) TableName() string {
+	return "t_test"
+}
+
+func (t *Test) Topic() string {
+	return "topic_test"
+}
+
+var m Model
+
 func TestNew(t *testing.T) {
-	db, err := database.NewDatabase("sqlite3", "test.db")
+	_, _ = event.Subscribe("topic_test", func(e *event.Event) {
+		data, _ := json.Marshal(e)
+		printer.Trace(string(data))
+	})
+
+
+	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := New(db, &mdl.Resource{}, "testTopic", true, "t_test")
+	m, err = New(db, &Test{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var r mdl.Resource
-	r.Name = "123456"
-	r.Creator = "5678"
-	err = m.Create(&r, nil)
+}
+
+func TestCreate(t *testing.T) {
+	TestModel_GetList(t)
+
+	code, err := m.Create(&Test{
+		Resource: Resource{},
+		Name:     "name",
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for id == 0 {
-		time.Sleep(100 * time.Millisecond)
-	}
-	tempR, err := m.Get("WHERE `id` = ?", id)
+	r, err := m.Get(code)
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, _ := json.Marshal(tempR)
+	data, _ := json.Marshal(r)
 	printer.Trace(string(data))
 
-	r = *(tempR.(*mdl.Resource))
-	r.Name = "ceshi1"
-	err = m.Update(r, nil, "WHERE `id` = ?", r.Id)
+	TestModel_GetList(t)
+
+	err = m.Update(&Test{
+		Resource: Resource{
+			Code:      code,
+		},
+		Name: "update_name",
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tempR, err = m.Get("WHERE `id` = ?", id)
+	r, err = m.Get(code)
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, _ = json.Marshal(tempR)
+	data, _ = json.Marshal(r)
 	printer.Trace(string(data))
 
-	err = m.Delete(nil, "WHERE `id` = ?", r.Id)
+	TestModel_GetList(t)
+
+	err = m.Delete(code, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	tempR, err = m.Get("WHERE `id` = ?", id)
+	r, err = m.Get(code)
 	if err != nil {
 		printer.Error(err)
 	}
-	wg.Wait()
+	data, _ = json.Marshal(r)
+	printer.Trace(string(data))
+
+	TestModel_GetList(t)
+}
+
+func TestModel_Begin(t *testing.T) {
+	m.Begin()
+	var err error
+	defer func() {
+		if err != nil {
+			m.Rollback()
+		} else {
+			m.Commit()
+		}
+	}()
+	var code string
+	code, err = m.Create(&Test{
+		Resource: Resource{},
+		Name:     "name",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = m.Update(&Test{
+		Resource: Resource{
+			Code:      code,
+		},
+		Name: "update_name",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = m.Delete(code, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestModel_GetList(t *testing.T) {
+	values, err := m.GetList("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(values)
+	printer.Trace(string(data))
 }
