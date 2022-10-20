@@ -118,7 +118,7 @@ func response(context *gin.Context, data interface{}, err error) {
 		} else {
 			response.Result = false
 			response.Error = err.Error()
-			status = http.StatusInternalServerError
+			status = http.StatusOK
 		}
 		response.Data = data
 		context.JSON(status, response)
