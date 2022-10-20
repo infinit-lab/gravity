@@ -53,7 +53,13 @@ func Run() error {
 			context.JSON(http.StatusNotFound, gin.H{"result": false, "message": "Not Found. "})
 		}
 	})
-	return server.ListenAndServe()
+	keyPath := config.GetString("server.ssl.key")
+	certPath := config.GetString("server.ssl.cert")
+	if len(keyPath) == 0 || len(certPath) == 0 {
+		return server.ListenAndServe()
+	} else {
+		return server.ListenAndServeTLS(certPath, keyPath)
+	}
 }
 
 func Shutdown() error {
